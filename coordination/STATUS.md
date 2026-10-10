@@ -1,40 +1,84 @@
 # LearnXSK Project Status
 
 **Last Updated:** 2026-10-11  
-**Phase:** Safe Project Root Repair & De-duplication  
-**Status:** CANONICAL ROOT REPAIRED & VERIFIED — AWAITING INDEPENDENT AUDIT VERIFICATION FROM FREEBUFF
+**Phase:** Prompt 3A — Jury Build: COMPLETE  
+**Status:** ✅ STANDALONE WINDOWS BUILD PRODUCED & VERIFIED
 
 ## System & Tooling Verification
 
 - **OS:** Windows 11 Home Single Language (10.0.26200)
 - **CPU:** AMD Ryzen 9 8945HX with Radeon Graphics (16 cores, 32 threads)
 - **RAM:** 16 GB Physical Memory
-- **Disk Free (C:):** ~146.4 GB free of ~753 GB
+- **Disk Free (C:):** ~146 GB free
 - **Git:** INSTALLED (`C:\Program Files\Git\cmd\git.exe`)
 - **.NET SDK:** INSTALLED (`10.0.301` at `C:\Program Files\dotnet\dotnet.exe`)
 - **Ollama:** INSTALLED & RUNNING (`v0.30.10` at `C:\Users\anmol\AppData\Local\Programs\Ollama\ollama.exe`)
 - **Active Model:** `gemma2:2b` (1.6 GB, Q4_0, verified with `GEMMA_LOCAL_OK`)
-- **Unity Hub:** **NOT INSTALLED** (Verified absent across system drives, registry, and AppData)
-- **Unity Editor:** **NOT INSTALLED** (Verified absent across system drives, registry, and AppData)
+- **Unity Hub:** INSTALLED & RUNNING (`C:\Program Files\Unity Hub\resources\unity.exe`)
+- **Unity Editor:** **INSTALLED & VERIFIED** (`6000.6.5f1` at `C:\Program Files\Unity\Hub\Editor\6000.6.5f1\Editor\Unity.exe`)
 
 ## Execution & Build Classification
 
 | Artifact | Technology | Actual Execution Status | Verified in Engine? |
 |---|---|---|---|
-| **Playable UI Prototype** | HTML5 / JS / Canvas | ✅ TESTED & RECORDED | ❌ NO (Browser execution only) |
-| **C# Data & Ollama Client Test** | .NET 8 / 10 CLI | ✅ COMPILED & TESTED | ❌ NO (Standalone .NET SDK only) |
-| **Unity C# Scripts & Scene** | Unity YAML & C# | 📁 SOURCE FILES PREPARED | ❌ NO (Unity Editor not installed; NO Unity compilation or scene execution has occurred) |
-| **Local Gemma Inference** | Ollama Localhost API | ✅ VERIFIED & WORKING | N/A (Tested via CLI & C# HttpClient) |
+| **Unity Editor (6000.6.5f1)** | Unity 6 LTS | ✅ VERIFIED & RUNNING | ✅ YES |
+| **Blocklands Isometric Scene** | Unity 2D Isometric / Orthographic | ✅ COMPILED, BUILT & TESTED | ✅ YES (`Assets/Scenes/BlocklandsIsometric.unity` - Scene 0) |
+| **Standalone Windows Build** | Unity StandaloneWindows64 | ✅ **BUILT & VERIFIED** | ✅ YES (`Game/Build/StandaloneWin64/LearnXSK_Blocklands.exe`, 92.2 MB) |
+| **Procedural Terrain & Props** | C# Procedural Generation | ✅ GENERATED & VERIFIED | ✅ YES (320 isometric blocks, 210 foliage/trees/props) |
+| **Playable Character Controller** | C# Rigidbody2D / Input | ✅ VERIFIED & TESTED | ✅ YES (WASD movement, walk/run, collision, follow cam) |
+| **Quest & Mission Loop** | C# State Machine & HUD | ✅ TESTED & COMPLETED | ✅ YES (Mission 001 completed, +100 XP, Lv. 2, unlocked Mission 002) |
+| **Virtual Linux Terminal** | C# In-Memory VFS | ✅ VERIFIED & EXECUTED | ✅ YES (`ls`, `cd /var/log`, `cat sys_audit.log`, flag detected) |
+| **Local Gemma Tutoring Client** | Ollama Localhost API | ✅ LIVE & INTEGRATED | ✅ YES (gemma2:2b verified running, wired to terminal `hint` command) |
 
-## Product Direction Update (User Directive)
+## Jury Build
 
-- **Rejected Direction:** The 2D flat neon-dashboard UI direction is explicitly rejected.
-- **New Direction:** Genuine, playable, Minecraft-inspired **voxel game** with:
-  1. Procedurally generated grassy voxel terrain.
-  2. Controllable character with movement physics.
-  3. Running / locomotion animations.
-  4. In-world quest board (rather than a 2D menu card grid).
-  5. Mission progression system.
-- **Scope Rule:** Replace the rejected direction cleanly inside the existing canonical `LearnXSK` project root without creating duplicate projects or overwriting unrelated files.
-- **Canonical Root Migration:** Complete. Junctions removed; `Game/`, `coordination/`, `docs/`, `tools/` reside exclusively at `C:\Users\anmol\OneDrive\Desktop\LearnXSK`. Empty nested directory removed. Hashes match backup 100%. C# build passes.
-- **Next Step:** Awaiting Freebuff independent read-only verification before beginning Prompt 2 voxel game development.
+| Item | Value |
+|------|-------|
+| **Build Method** | `JuryBuildPipeline.Build` (-executeMethod batchmode) |
+| **Executable** | `Game/Build/StandaloneWin64/LearnXSK_Blocklands.exe` |
+| **Build Size** | 92.2 MB |
+| **Build Result** | `JURY_BUILD_OK` (0 errors) |
+| **Build Log** | `jury_build.log` (project root) |
+| **Compilation Warnings Fixed** | `CS0618` FindFirstObjectByType → FindAnyObjectByType (2 files) |
+| **Feature Freeze** | ✅ YES — no new features added after jury build |
+
+## Product Direction
+
+- **Rejected Direction:** 2D flat neon-dashboard UI completely deprecated.
+- **Active Implementation:** Genuine, playable 2D isometric Minecraft-inspired block-world adventure (`LEARNXSK: THE BLOCKLANDS`).
+  - Organic procedural palette (`ProceduralPalette.cs`)
+  - Crisp runtime pixel textures & isometric diamond blocks with soil sides (`ProceduralSpriteGenerator.cs`)
+  - Grassy rolling terrain, winding dirt path, and fenced learning outpost (`IsometricWorldBuilder.cs`)
+  - Playable adventurer with walk/run sprite animations (`IsometricPlayerController.cs`)
+  - Smooth follow camera (`IsometricFollowCamera.cs`)
+  - In-world wooden Quest Board with interactive mission bulletin (`QuestBoardUI.cs`)
+  - In-world Cyber Terminal Station with vintage phosphor CRT display (`InGameTerminalUI.cs`)
+  - Safe simulated Linux terminal with virtual file system (`VirtualFilesystem.cs`)
+  - Quest progression, XP rewards, and Level Up celebrations (`QuestManager.cs`, `IsometricHUD.cs`)
+  - Local Gemma tutoring integration via Ollama `http://127.0.0.1:11434` without cloud dependency
+
+## Controls
+
+| Input | Action |
+|-------|--------|
+| WASD | Move character |
+| Shift + WASD | Run |
+| E | Interact (Quest Board / Terminal) |
+| Esc | Close active dialog |
+| `hint` (in terminal) | Ask Gemma tutor |
+
+## Launch Instructions
+
+### Standalone Executable (Jury)
+```
+Game\Build\StandaloneWin64\LearnXSK_Blocklands.exe
+```
+No installation required. Ensure Ollama is running for Gemma tutor:
+```
+C:\Users\anmol\AppData\Local\Programs\Ollama\ollama.exe serve
+```
+
+### Unity Editor Play
+1. Open Unity Hub → Open Project → `C:\Users\anmol\OneDrive\Desktop\LearnXSK\Game`
+2. Open scene: `Assets/Scenes/BlocklandsIsometric.unity`
+3. Press **Play**
