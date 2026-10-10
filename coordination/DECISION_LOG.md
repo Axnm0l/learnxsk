@@ -33,3 +33,14 @@
     5. Mission progression system.
   - Changes will be implemented directly inside the existing canonical `LearnXSK` project root without creating a second project or overwriting unrelated files.
 - **Status:** Architecture pivot approved; awaiting user implementation prompt.
+
+### DEC-005: Canonical Project Root Repair & De-duplication
+- **Rationale:** Prompt 2 pre-condition required repairing the accidental nested `LearnXSK\LearnXSK` directory structure and removing NTFS junctions so that all assets, scenes, scripts, docs, and coordination files physically reside solely at canonical root `C:\Users\anmol\OneDrive\Desktop\LearnXSK`.
+- **Decision:**
+  1. Complete backup preserved at `C:\Users\anmol\OneDrive\Desktop\LearnXSK_backup_pre_repair` and zip archive `LearnXSK_backup_pre_repair.zip`.
+  2. NTFS junctions (`Game`, `coordination`, `docs`, `tools`) safely removed.
+  3. Real physical directories promoted to root `C:\Users\anmol\OneDrive\Desktop\LearnXSK`.
+  4. Empty nested directory `LearnXSK\LearnXSK` safely removed.
+  5. `Game\Assets\LearnXSK` asset namespace preserved intact.
+  6. Git index staged deletion of duplicate `LearnXSK/...` inner paths while preserving root files and Git commit history.
+- **Status:** Completed and verified.

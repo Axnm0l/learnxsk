@@ -27,6 +27,8 @@
 | INF-07 | Unity Hub verification | BLOCKED | OS Search | **NOT INSTALLED** |
 | INF-08 | Unity Editor verification | BLOCKED | OS Search | **NOT INSTALLED** |
 | INF-09 | C# tooling verification | DONE | CLI | .NET SDK 10.0.301 / net8.0 available |
+| ROOT-01 | Safe Project Root Repair & De-duplication | DONE | File System / Git | Junctions removed; files moved to canonical root; nested dir deleted; backup preserved; Git staged |
+| ROOT-02 | Independent Freebuff Read-Only Audit | REVIEW | Agent B Audit | Staged for Freebuff independent verification |
 
 ---
 

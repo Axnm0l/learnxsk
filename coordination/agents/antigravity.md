@@ -3,14 +3,14 @@
 **Agent:** ANTIGRAVITY_COORDINATOR (Gemini 3.8 Flash)  
 **IDE:** Google Antigravity  
 **Date:** 2026-10-11  
-**Phase:** Prompt 1 Follow-up — Direction Reset  
+**Phase:** Safe Project Root Repair & De-duplication  
 
 ---
 
 ## 1. Current Task and State
 
-- **Current Task:** Record verified Unity status, runtime distinctions, and prepare for Minecraft-inspired voxel game redesign.
-- **State:** `AWAITING_USER_PROMPT`
+- **Current Task:** Canonical project root repaired and verified. Awaiting Freebuff independent read-only verification before beginning Prompt 2.
+- **State:** `MIGRATION_COMPLETE_AWAITING_FREEBUFF_VERIFICATION`
 
 ---
 
@@ -42,12 +42,36 @@ This will replace the rejected direction inside the canonical `LearnXSK` workspa
 
 ---
 
-## 4. Current Blockers
+## 4. Canonical Project Root Repair & De-duplication Report
+
+1. **Pre-migration Backup:**
+   - Full directory copy created at `C:\Users\anmol\OneDrive\Desktop\LearnXSK_backup_pre_repair` (220 files, 778.8 KB, `.git` included).
+   - Compressed archive created at `C:\Users\anmol\OneDrive\Desktop\LearnXSK_backup_pre_repair.zip`.
+2. **Junction & Directory Reorganization:**
+   - Evaluated root junctions `Game`, `coordination`, `docs`, `tools` pointing to `LearnXSK\LearnXSK\...`.
+   - Safely removed junction reparse points via `cmd /c rmdir`.
+   - Moved physical directories to canonical root `C:\Users\anmol\OneDrive\Desktop\LearnXSK`.
+   - Verified that inner directory `LearnXSK\LearnXSK` became empty and removed it.
+   - `Game\Assets\LearnXSK` asset namespace remains intact and untouched.
+3. **Integrity & Hash Verification:**
+   - SHA-256 hash check executed across all critical files (`WelcomeScreen.unity`, `manifest.json`, `ProjectSettings.asset`, `TagManager.asset`, C# scripts, docs, and coordination files).
+   - Result: **100% MATCH (0 mismatches)** against pre-migration backup.
+4. **C# Tooling Verification:**
+   - `dotnet build tools\csharp-verification\VerificationTest.csproj` -> Build Succeeded (0 Warning(s), 0 Error(s)).
+5. **Git Repository Status:**
+   - Git commit history preserved (no history rewrite or destructive commands).
+   - Tracked root files remain intact in Git index.
+   - Duplicate `LearnXSK/...` inner path staged for deletion (`git add -u LearnXSK/`).
+
+---
+
+## 5. Current Blockers
 
 - **BLK-01:** Unity Editor not installed on Windows PC. Real Unity engine compilation and scene playback require Unity Editor installation.
 
 ---
 
-## 5. Next Action
+## 6. Next Action
 
-- **WAITING** for the user's next implementation prompt before beginning the voxel game redesign.
+- Request Agent B (Freebuff) to perform an independent read-only audit verification of the repaired canonical project root.
+- Do NOT begin Prompt 2 feature development until Freebuff confirms verification.

@@ -49,3 +49,18 @@
 - **Target:** `Game/Assets/Scenes/WelcomeScreen.unity`
 - **Runtime:** Unity 6 LTS / 2022.3 LTS
 - **Status:** **NOT PERFORMED**. No Unity Editor binary exists on the system.
+
+### Record 4: Canonical Project Root Migration & Integrity Verification
+- **Target:** `C:\Users\anmol\OneDrive\Desktop\LearnXSK`
+- **Actions:**
+  - Removed NTFS junctions (`Game`, `coordination`, `docs`, `tools`).
+  - Promoted directories to root.
+  - Removed empty `LearnXSK\LearnXSK` nested folder.
+  - Preserved complete backup at `C:\Users\anmol\OneDrive\Desktop\LearnXSK_backup_pre_repair` and `.zip`.
+- **Integrity Check:**
+  - `Game\Assets\Scenes\WelcomeScreen.unity`: 17,991 bytes, SHA-256 match.
+  - `Game\Packages\manifest.json`: 1,643 bytes, SHA-256 match.
+  - All 11 critical files SHA-256 verified against pre-migration backup (0 mismatches).
+- **Compilation Check:**
+  - `dotnet build tools\csharp-verification\VerificationTest.csproj` -> Build Succeeded (0 Warnings, 0 Errors).
+
