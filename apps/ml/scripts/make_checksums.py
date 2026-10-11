@@ -22,14 +22,22 @@ import _common  # noqa: E402
 
 SKIP_DIRS = {".venv", "cache", "__pycache__", ".git"}
 
+# The manifest cannot include its own hash: writing the file would change it, so
+# every `--verify` run would report the manifest as modified.
+MANIFEST_RELATIVE = "reports/checksums.json"
+
 
 def iter_artifacts(root: Path) -> list[Path]:
     files: list[Path] = []
     for path in sorted(root.rglob("*")):
         if any(part in SKIP_DIRS for part in path.parts):
             continue
-        if path.is_file() and path.suffix != ".tmp":
-            files.append(path)
+        if not path.is_file() or path.suffix == ".tmp":
+            continue
+        relative = str(path.relative_to(root)).replace("\\", "/")
+        if relative == MANIFEST_RELATIVE:
+            continue
+        files.append(path)
     return files
 
 
@@ -83,6 +91,7 @@ def main(argv: list[str] | None = None) -> int:
         "combined_digest": running,
         "files": entries,
         "skipped_directories": sorted(SKIP_DIRS),
+        "excluded_from_manifest": [MANIFEST_RELATIVE],
     }
     _common.write_json_atomic(manifest_path, payload)
     _common.info(f"hashed {len(entries)} file(s), {payload['total_bytes']} bytes")

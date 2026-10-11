@@ -92,28 +92,113 @@ def remote_checkpoint_size_gib(model_id: str) -> tuple[float | None, dict[str, A
     return weight_bytes / 1024 ** 3, detail
 
 
+# nf4 stores 4 bits per parameter plus per-block absmax/scale overhead; 0.55
+# bytes/parameter is the working figure for bitsandbytes nf4 with double quant.
+NF4_BYTES_PER_PARAM = 0.55
+# With gradient checkpointing, batch size 1 and a 1536-token limit, activations
+# add roughly 30% on top of the int4 weights.
+ACTIVATION_HEADROOM = 1.3
+
+
+def device_memory() -> dict[str, Any]:
+    """Report CUDA device memory, or an explicit reason there is none."""
+    try:
+        import torch  # noqa: PLC0415
+    except ImportError as exc:
+        return {"available": False, "reason": f"torch not importable: {exc}"}
+    if not torch.cuda.is_available():
+        return {"available": False,
+                "reason": "torch.cuda.is_available() is False",
+                "torch_version": str(torch.__version__),
+                "cuda_build": torch.version.cuda}
+    free, total = torch.cuda.mem_get_info(0)
+    return {
+        "available": True,
+        "name": torch.cuda.get_device_name(0),
+        "vram_total_gib": round(total / 1024 ** 3, 2),
+        "vram_free_gib": round(free / 1024 ** 3, 2),
+        "capability": ".".join(str(x) for x in torch.cuda.get_device_capability(0)),
+    }
+
+
 def resource_gate(config: dict[str, Any], out_root: str | None,
                   force: bool) -> dict[str, Any]:
+    """Decide whether a run can fit, on whichever path it will actually take.
+
+    The two paths need different resources and must not be conflated:
+
+    * **4-bit on CUDA** - the weights live on the device at ~0.55 bytes per
+      parameter, so the binding constraint is VRAM. Host RAM only has to stream
+      the checkpoint shard through the loader.
+    * **bf16 on CPU** - the whole checkpoint lands in host RAM, so the binding
+      constraint is free RAM, roughly 1.6x the bf16 size for activations and
+      optimizer state.
+
+    An earlier version of this gate assumed the bf16-in-RAM path unconditionally,
+    which wrongly refused a 4-bit GPU run that would have fit.
+    """
     model_id = config["model"]["id"]
     limits = config.get("resource_limits", {})
     min_ram = float(limits.get("min_free_ram_gb", 0) or 0)
     min_disk = float(limits.get("min_free_disk_gb", 0) or 0)
+    params = int(config["model"].get("parameter_count") or 0)
 
     weights_gib, detail = remote_checkpoint_size_gib(model_id)
     ram = free_ram_gib()
     disk = free_disk_gib(Path(_common.training_root(out_root)))
+    device = device_memory()
 
-    # bf16 weights land in RAM, and training needs headroom on top for
-    # activations, gradients and the optimizer.
-    needed_gib = None if weights_gib is None else round(weights_gib * 1.6, 2)
+    want_4bit = bool(config["model"].get("load_in_4bit"))
+    try:
+        import bitsandbytes  # noqa: F401,PLC0415
+        have_bnb = True
+    except ImportError:
+        have_bnb = False
+
+    quantized_gpu_path = bool(device.get("available")) and want_4bit and have_bnb
     reasons: list[str] = []
-    if ram is not None and needed_gib is not None and ram < needed_gib:
-        reasons.append(
-            f"free RAM {ram:.2f} GiB < estimated need {needed_gib:.2f} GiB for "
-            f"a {weights_gib:.2f} GiB bf16 checkpoint"
-        )
-    if ram is not None and ram < min_ram:
-        reasons.append(f"free RAM {ram:.2f} GiB < configured minimum {min_ram} GiB")
+    plan: dict[str, Any] = {}
+
+    if quantized_gpu_path:
+        weights_device_gib = params * NF4_BYTES_PER_PARAM / 1024 ** 3
+        device_required = round(weights_device_gib * ACTIVATION_HEADROOM, 2)
+        host_required = max(2.0, min_ram)
+        plan = {
+            "path": "4bit_qlora_on_cuda",
+            "device_weights_gib": round(weights_device_gib, 2),
+            "device_required_gib": device_required,
+            "vram_total_gib": device.get("vram_total_gib"),
+            "host_ram_required_gib": host_required,
+        }
+        if float(device.get("vram_total_gib") or 0) < device_required:
+            reasons.append(
+                f"VRAM {device.get('vram_total_gib')} GiB < {device_required} GiB "
+                f"needed for 4-bit weights + activations"
+            )
+        if ram is not None and ram < host_required:
+            reasons.append(
+                f"free RAM {ram:.2f} GiB < {host_required:.2f} GiB needed to stream "
+                f"the checkpoint through the loader"
+            )
+    else:
+        needed_gib = None if weights_gib is None else round(weights_gib * 1.6, 2)
+        plan = {
+            "path": "bf16_lora_on_cpu",
+            "host_ram_required_gib": needed_gib,
+            "reason_for_cpu_path": (
+                device.get("reason") if not device.get("available")
+                else ("bitsandbytes not installed" if not have_bnb
+                      else "load_in_4bit disabled in config")
+            ),
+        }
+        if ram is not None and needed_gib is not None and ram < needed_gib:
+            reasons.append(
+                f"free RAM {ram:.2f} GiB < estimated need {needed_gib:.2f} GiB for "
+                f"a {weights_gib:.2f} GiB bf16 checkpoint resident in host memory"
+            )
+        if ram is not None and ram < min_ram:
+            reasons.append(f"free RAM {ram:.2f} GiB < configured minimum {min_ram} GiB")
+
     if disk < min_disk:
         reasons.append(f"free disk {disk:.2f} GiB < configured minimum {min_disk} GiB")
     if detail.get("error"):
@@ -123,10 +208,13 @@ def resource_gate(config: dict[str, Any], out_root: str | None,
     return {
         "verdict": verdict,
         "reasons": reasons,
+        "plan": plan,
         "free_ram_gib": None if ram is None else round(ram, 2),
         "free_disk_gib": round(disk, 2),
         "weights_gib": weights_gib,
-        "estimated_train_ram_gib": needed_gib,
+        "parameter_count": params,
+        "device": device,
+        "bitsandbytes_available": have_bnb,
         "limits": {"min_free_ram_gb": min_ram, "min_free_disk_gb": min_disk},
         "checkpoint": detail,
     }
@@ -309,6 +397,21 @@ def main(argv: list[str] | None = None) -> int:
                         help="Train on a tiny randomly initialized Gemma4TextConfig "
                              "instead of downloading the real checkpoint.")
     parser.add_argument("--force-past-resource-gate", action="store_true")
+    parser.add_argument(
+        "--report-name", default="reports/train_lora_report.json",
+        help="Report path relative to the training root. Set this to keep earlier "
+             "reports (for example the random-init smoke evidence) intact.")
+    parser.add_argument(
+        "--adapter-dir", default=None,
+        help="Override the adapter output directory.")
+    parser.add_argument(
+        "--validation-file", default=None,
+        help="Held-out rows for validation loss/ppl. Defaults to "
+             "splits/validation.jsonl under the training root when it exists. "
+             "Validation data is never trained on.")
+    parser.add_argument(
+        "--run-dir", default=None,
+        help="Override the trainer output directory.")
     _common.add_common_args(parser)
     args = parser.parse_args(argv)
 
@@ -316,9 +419,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.model_id:
         config["model"]["id"] = args.model_id
     paths = _common.load_yaml(str(Path(args.config).parent / "data_pipeline.yaml"))
-    run_dir = _common.artifact_path(config["outputs"]["run_dir"], args.out_root)
-    adapter_dir = _common.artifact_path(config["outputs"]["adapter_dir"], args.out_root)
-    report_path = _common.artifact_path("reports/train_lora_report.json", args.out_root)
+    run_dir = _common.artifact_path(
+        args.run_dir or config["outputs"]["run_dir"], args.out_root)
+    adapter_dir = _common.artifact_path(
+        args.adapter_dir or config["outputs"]["adapter_dir"], args.out_root)
+    report_path = _common.artifact_path(args.report_name, args.out_root)
     train_file = Path(args.train_file) if args.train_file else _common.artifact_path(
         paths["paths"]["outputs"]["train"], args.out_root)
 
@@ -331,6 +436,8 @@ def main(argv: list[str] | None = None) -> int:
             "processor": platform.processor(),
         },
         "config": args.config,
+        "model_id": config["model"]["id"],
+        "report_path": str(report_path),
         "train_file": str(train_file),
         "limit_rows": args.limit_rows,
         "max_steps": args.max_steps,
@@ -401,12 +508,40 @@ def main(argv: list[str] | None = None) -> int:
         _common.write_json_atomic(report_path, report)
         return 1
 
+    # ---- held-out validation, kept strictly separate from training ---------
+    validation_file = (Path(args.validation_file) if args.validation_file
+                       else _common.artifact_path(paths["paths"]["outputs"]["validation"],
+                                                  args.out_root))
+    validation_effective: list[dict[str, Any]] = []
+    if validation_file.is_file():
+        validation_rows = build_examples(validation_file, None)
+        validation_effective = [
+            item for item in (render_completion_pair(row["messages"], tokenizer, max_seq_len)
+                              for row in validation_rows)
+            if item["answer_len"] > 0
+        ]
+        report["validation"] = {
+            "file": str(validation_file),
+            "rows": len(validation_rows),
+            "rows_with_supervision": len(validation_effective),
+            "used_for_training": False,
+        }
+        _common.info(f"validation rows: {len(validation_effective)} from "
+                     f"{validation_file.name} (held out)")
+    else:
+        report["validation"] = {"file": str(validation_file), "rows": 0,
+                                "used_for_training": False,
+                                "note": "no validation file found"}
+
     class ChatDataset(Dataset):
+        def __init__(self, rows: list[dict[str, Any]] | None = None) -> None:
+            self.rows = rows if rows is not None else effective
+
         def __len__(self) -> int:
-            return len(effective)
+            return len(self.rows)
 
         def __getitem__(self, index: int) -> dict[str, Any]:
-            return effective[index]
+            return self.rows[index]
 
     pad_id = tokenizer.pad_token_id or tokenizer.eos_token_id
 
@@ -462,12 +597,20 @@ def main(argv: list[str] | None = None) -> int:
         key: value for key, value in training.items()
         if key in TrainingArguments.__dataclass_fields__
     })
+    eval_dataset = (ChatDataset(validation_effective) if validation_effective else None)
     trainer = Trainer(model=model, args=trainer_args, train_dataset=ChatDataset(),
-                      data_collator=collate)
+                      eval_dataset=eval_dataset, data_collator=collate)
 
     train_started = time.time()
     result = trainer.train()
     train_seconds = time.time() - train_started
+
+    eval_metrics: dict[str, float] = {}
+    if eval_dataset is not None:
+        evaluation = trainer.evaluate()
+        eval_metrics = {k: float(v) for k, v in evaluation.items()
+                        if isinstance(v, (int, float))}
+        _common.info(f"validation metrics: {eval_metrics}")
 
     adapter_dir.mkdir(parents=True, exist_ok=True)
     model.save_pretrained(str(adapter_dir))
@@ -481,6 +624,8 @@ def main(argv: list[str] | None = None) -> int:
             "train_loss": float(getattr(result, "training_loss", float("nan"))),
             "metrics": {k: float(v) for k, v in (result.metrics or {}).items()
                         if isinstance(v, (int, float))},
+            "final_eval_metrics": eval_metrics,
+            "validation_loss": eval_metrics.get("eval_loss"),
         },
         "hyperparameters": {k: v for k, v in training.items()
                             if isinstance(v, (str, int, float, bool))},

@@ -1,0 +1,89 @@
+# Real QLoRA fine-tune configuration for a CUDA host (Colab / Kaggle / rented GPU).
+#
+# Identical to train_lora.yaml except for the values that only make sense on a
+# machine with a working GPU, so the smoke config stays intact as audit evidence:
+#   * a real number of optimiser steps instead of 20
+#   * its own output directories, so a real run can never overwrite the
+#     random-initialization smoke artifacts
+#
+# Everything else - LoRA rank, targets, sequence length, seed, resource limits -
+# is deliberately the same, because those were validated by the local pipeline.
+
+model:
+  id: google/gemma-4-E2B-it
+  fallback_ids:
+    - google/gemma-4-E4B-it
+  revision: main
+  trust_remote_code: false
+  requires_auth: false          # verified ungated via the HF API on 2026-10-11
+  parameter_count: 5123178051   # read from the safetensors header (2,011 bf16 tensors)
+  stored_dtype: bfloat16
+  modality: text_only
+  dtype: bfloat16
+  device_map: auto
+  attn_implementation: sdpa
+  load_in_4bit: true
+  bnb_4bit_quant_type: nf4
+  bnb_4bit_compute_dtype: bfloat16
+  bnb_4bit_use_double_quant: true
+
+lora:
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  bias: none
+  task_type: CAUSAL_LM
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+  modules_to_save: []
+
+training:
+  max_seq_len: 1536             # measured: 0 of 19,461 rows exceed this
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 16
+  num_train_epochs: 1
+  max_steps: 300                # real run; ~0.28 epoch over the 17,488-row split
+  learning_rate: 0.0002
+  lr_scheduler_type: cosine
+  warmup_ratio: 0.03
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  bf16: true
+  fp16: false
+  gradient_checkpointing: true
+  gradient_checkpointing_kwargs:
+    use_reentrant: false
+  logging_steps: 5
+  save_strategy: steps
+  save_steps: 100
+  save_total_limit: 2
+  eval_strategy: steps
+  eval_steps: 100
+  dataloader_num_workers: 0
+  optim: adamw_torch
+  report_to: none
+  seed: 20260402
+  packing: false
+
+trl:
+  dataset_text_field: null
+  assistant_only_loss: true
+  completion_only_loss: true
+  use_peft: true
+
+outputs:
+  run_dir: runs/gemma4-e2b-cyber-lora
+  adapter_dir: adapters/gemma4-e2b-cyber-lora
+  log_dir: runs/gemma4-e2b-cyber-lora/logs
+  export_dir: exports/gemma4-e2b-cyber-lora-real
+
+resource_limits:
+  min_free_ram_gb: 4.0
+  min_free_disk_gb: 12.0
+  max_train_seconds: 10800      # 3 h budget for a 300-step run

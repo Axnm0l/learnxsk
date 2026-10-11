@@ -3,157 +3,166 @@ import { QuestManager } from '../quest/QuestManager';
 import { GemmaClient } from '../ai/GemmaClient';
 
 export class TerminalUI {
-  private modal: HTMLElement;
-  private screen: HTMLElement;
-  private input: HTMLInputElement;
-  private promptLabel: HTMLElement;
-  private hintBtn: HTMLElement;
-  private closeBtn: HTMLElement;
-  private closeDot: HTMLElement;
-  private tutorBox: HTMLElement;
-  private tutorText: HTMLElement;
+  private modalEl: HTMLElement;
+  private screenEl: HTMLElement;
+  private inputEl: HTMLInputElement;
+  private promptLabelEl: HTMLElement;
+  private tutorTextEl: HTMLElement;
+  private hintBtnEl: HTMLButtonElement;
+  private closeBtnEl: HTMLElement;
+  private closeDotEl: HTMLElement;
 
   private vfs: VirtualFilesystem;
-  private questManager: QuestManager;
+  private qm: QuestManager;
 
-  private history: string[] = [];
+  private commandHistory: string[] = [];
   private historyIndex: number = -1;
 
-  constructor(vfs: VirtualFilesystem, questManager: QuestManager) {
+  constructor(vfs: VirtualFilesystem, qm: QuestManager) {
     this.vfs = vfs;
-    this.questManager = questManager;
+    this.qm = qm;
 
-    this.modal = document.getElementById('terminal-modal')!;
-    this.screen = document.getElementById('terminal-screen')!;
-    this.input = document.getElementById('terminal-input') as HTMLInputElement;
-    this.promptLabel = document.getElementById('terminal-prompt-label')!;
-    this.hintBtn = document.getElementById('terminal-hint-btn')!;
-    this.closeBtn = document.getElementById('terminal-close-btn')!;
-    this.closeDot = document.getElementById('term-close-dot')!;
-    this.tutorBox = document.getElementById('tutor-box')!;
-    this.tutorText = document.getElementById('tutor-text')!;
+    this.modalEl = document.getElementById('terminal-modal')!;
+    this.screenEl = document.getElementById('terminal-screen')!;
+    this.inputEl = document.getElementById('terminal-input') as HTMLInputElement;
+    this.promptLabelEl = document.getElementById('terminal-prompt-label')!;
+    this.tutorTextEl = document.getElementById('tutor-text')!;
+    this.hintBtnEl = document.getElementById('terminal-hint-btn') as HTMLButtonElement;
+    this.closeBtnEl = document.getElementById('terminal-close-btn')!;
+    this.closeDotEl = document.getElementById('term-close-dot')!;
 
-    this.closeBtn.addEventListener('click', () => this.close());
-    this.closeDot.addEventListener('click', () => this.close());
+    this.initEvents();
+  }
 
-    this.modal.addEventListener('click', (e) => {
-      if (e.target === this.modal) this.close();
-    });
+  private initEvents(): void {
+    // Close events
+    this.closeBtnEl?.addEventListener('click', () => this.close());
+    this.closeDotEl?.addEventListener('click', () => this.close());
 
-    this.hintBtn.addEventListener('click', () => this.requestHint());
-
-    this.input.addEventListener('keydown', (e) => {
+    // Enter command & history navigation
+    this.inputEl?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        const val = this.input.value;
-        this.input.value = '';
-        this.handleCommand(val);
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        if (this.history.length > 0 && this.historyIndex < this.history.length - 1) {
-          this.historyIndex++;
-          this.input.value = this.history[this.history.length - 1 - this.historyIndex];
+        const raw = this.inputEl.value;
+        this.inputEl.value = '';
+        if (raw.trim()) {
+          this.commandHistory.push(raw);
+          this.historyIndex = this.commandHistory.length;
+          this.handleCommand(raw);
         }
-      } else if (e.key === 'ArrowDown') {
+      } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         if (this.historyIndex > 0) {
           this.historyIndex--;
-          this.input.value = this.history[this.history.length - 1 - this.historyIndex];
-        } else if (this.historyIndex === 0) {
-          this.historyIndex = -1;
-          this.input.value = '';
+          this.inputEl.value = this.commandHistory[this.historyIndex] || '';
+        }
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (this.historyIndex < this.commandHistory.length - 1) {
+          this.historyIndex++;
+          this.inputEl.value = this.commandHistory[this.historyIndex] || '';
+        } else {
+          this.historyIndex = this.commandHistory.length;
+          this.inputEl.value = '';
         }
       }
     });
 
-    // Listen for quest token discovery
-    this.vfs.onTokenFound = (_token: string) => {
-      this.handleTokenSuccess();
+    // Ask Gemma Tutor button
+    this.hintBtnEl?.addEventListener('click', async () => {
+      this.tutorTextEl.innerText = 'Gemma 4 is synthesizing hint...';
+      const curr = this.qm.getCurrentMission();
+      const res = await GemmaClient.getInstance().askTutor(
+        `What command should I use next in mission "${curr.title}"?`,
+        curr.title,
+        this.vfs.getCurrentPath()
+      );
+      this.tutorTextEl.innerText = res.answer;
+      if (res.suggestedAction) {
+        this.inputEl.value = res.suggestedAction;
+        this.inputEl.focus();
+      }
+    });
+
+    // VFS async callback for Gemma AI output in shell
+    this.vfs.onCommandExecuted = (_cmd, output) => {
+      if (output.includes('[GEMMA AI TUTOR RESPONSE]')) {
+        const p = document.createElement('p');
+        p.className = 'term-tutor-output';
+        p.innerText = output;
+        this.screenEl.appendChild(p);
+        this.scrollToBottom();
+      }
     };
   }
 
   public open(): void {
-    this.modal.style.display = 'flex';
+    this.modalEl.classList.add('open');
     this.updatePrompt();
-    setTimeout(() => {
-      this.input.focus();
-    }, 50);
+    this.inputEl.focus();
+
+    // Mission 1 step trigger for opening terminal
+    this.qm.completeStep('task_001', 't1_open');
+
+    // Update tutor greeting
+    const curr = this.qm.getCurrentMission();
+    this.tutorTextEl.innerText = `Active: ${curr.title}. Use commands or click "Ask Gemma Tutor" for help.`;
   }
 
   public close(): void {
-    this.modal.style.display = 'none';
-    this.input.blur();
+    this.modalEl.classList.remove('open');
   }
 
   public isOpen(): boolean {
-    return this.modal.style.display === 'flex';
+    return this.modalEl.classList.contains('open');
   }
 
   private updatePrompt(): void {
-    this.promptLabel.textContent = `cadet@outpost:${this.vfs.getPromptPath()}$`;
+    const promptPath = this.vfs.getPromptPath();
+    this.promptLabelEl.innerText = `cadet@blocklands:${promptPath}$`;
   }
 
-  private printLine(text: string, className: string = 'term-stdout'): void {
-    const p = document.createElement('p');
-    p.className = className;
-    p.textContent = text;
-    this.screen.appendChild(p);
-    this.screen.scrollTop = this.screen.scrollHeight;
-  }
+  private handleCommand(raw: string): void {
+    // Print input line
+    const promptPath = this.vfs.getPromptPath();
+    const cmdLine = document.createElement('p');
+    cmdLine.className = 'term-cmd-echo';
+    cmdLine.innerHTML = `<span class="term-prompt">cadet@blocklands:${promptPath}$</span> ${escapeHtml(raw)}`;
+    this.screenEl.appendChild(cmdLine);
 
-  private handleCommand(cmdStr: string): void {
-    const trimmed = cmdStr.trim();
-    if (!trimmed) {
-      this.printLine(`cadet@outpost:${this.vfs.getPromptPath()}$`, 'term-prompt-line');
-      return;
-    }
+    // Execute through virtual filesystem
+    const result = this.vfs.execute(raw);
 
-    this.history.push(trimmed);
-    this.historyIndex = -1;
-
-    this.printLine(`cadet@outpost:${this.vfs.getPromptPath()}$ ${trimmed}`, 'term-prompt-line');
-
-    if (trimmed.toLowerCase() === 'hint') {
-      this.requestHint();
-      return;
-    }
-
-    const res = this.vfs.execute(trimmed);
-    if (res.isClear) {
-      this.screen.innerHTML = '';
-      return;
-    }
-
-    if (res.output) {
-      this.printLine(res.output, res.isError ? 'term-error' : 'term-stdout');
+    if (result.isClear) {
+      this.screenEl.innerHTML = `
+        <p class="term-info">========================================================</p>
+        <p class="term-info">  LEARNXSK VIRTUAL LINUX SYSTEM — TERMINAL SHELL v2.0   </p>
+        <p class="term-info">========================================================</p>
+      `;
+    } else if (result.output) {
+      const outP = document.createElement('pre');
+      outP.className = result.isError ? 'term-stderr' : 'term-stdout';
+      outP.innerText = result.output;
+      this.screenEl.appendChild(outP);
     }
 
     this.updatePrompt();
-  }
+    this.scrollToBottom();
 
-  private handleTokenSuccess(): void {
-    const currentMission = this.questManager.getCurrentMission();
-    if (currentMission.status === 'IN_PROGRESS' || currentMission.status === 'AVAILABLE') {
-      this.printLine('------------------------------------------------------------', 'term-success');
-      this.printLine(' ★ MISSION 001 CHALLENGE SOLVED! VERIFICATION TOKEN FOUND ★ ', 'term-success');
-      this.printLine('   Token: LEARNXSK_BLOCKLANDS_QUEST001_VALIDATED', 'term-info');
-      this.printLine('   Reward: +100 XP Awarded! Level 2 Unlocked!', 'term-success');
-      this.printLine('------------------------------------------------------------', 'term-success');
-
-      this.questManager.completeMission001();
+    // Dynamically update tutor bar
+    const curr = this.qm.getCurrentMission();
+    const incompleteStep = curr.steps.find(s => !s.completed);
+    if (!incompleteStep) {
+      this.tutorTextEl.innerText = `🎉 Mission accomplished! Reward XP awarded. Check Mission Control [M] for the next task!`;
     }
   }
 
-  public async requestHint(): Promise<void> {
-    this.tutorBox.classList.add('active');
-    this.tutorText.textContent = 'Gemma is analyzing current mission context...';
-
-    const mission = this.questManager.getCurrentMission();
-    const resp = await GemmaClient.requestHint({
-      mission: mission.title,
-      topic: 'Linux navigation in backups folder'
-    });
-
-    this.tutorText.textContent = resp.hint;
-    this.printLine(`[Gemma AI Tutor]: ${resp.hint}`, 'term-info');
+  private scrollToBottom(): void {
+    this.screenEl.scrollTop = this.screenEl.scrollHeight;
   }
+}
+
+function escapeHtml(text: string): string {
+  const div = document.createElement('div');
+  div.innerText = text;
+  return div.innerHTML;
 }

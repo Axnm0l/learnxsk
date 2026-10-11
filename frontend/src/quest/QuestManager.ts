@@ -1,45 +1,23 @@
-export type QuestStatus = 'LOCKED' | 'AVAILABLE' | 'IN_PROGRESS' | 'COMPLETED';
-
-export interface Mission {
-  id: string;
-  number: string;
-  title: string;
-  description: string;
-  objectiveText: string;
-  status: QuestStatus;
-  rewardXP: number;
-}
+import { Mission, INITIAL_MISSIONS } from './QuestData';
 
 export class QuestManager {
   private static instance: QuestManager;
 
   public xp: number = 0;
-  public maxXp: number = 100;
+  public maxXp: number = 1000;
   public level: number = 1;
-  public levelTitle: string = 'Level 1: Novice Explorer';
-
-  public missions: Mission[] = [
-    {
-      id: 'mission_001',
-      number: 'MISSION 001',
-      title: 'First Foothold: The Lost Config',
-      description: 'The outpost computer system rebooted and mislaid its core configuration files. Locate the secret verification token inside `/var/backups/token.env`.',
-      objectiveText: 'Approach the Quest Board and press [E] to accept assignment.',
-      status: 'AVAILABLE',
-      rewardXP: 100
-    },
-    {
-      id: 'mission_002',
-      number: 'MISSION 002',
-      title: 'Network Reconnaissance',
-      description: 'Scout the network topology across the blocklands perimeter router nodes.',
-      objectiveText: 'Unlocked! Check back with the commander for field deployment.',
-      status: 'LOCKED',
-      rewardXP: 150
-    }
-  ];
+  public levelTitle: string = 'Novice Explorer';
+  public missions: Mission[] = [];
+  public completedCount: number = 0;
+  public unlockedBadges: { name: string; icon: string }[] = [];
 
   public onStateChange?: () => void;
+  public onMissionCompleted?: (mission: Mission) => void;
+  public onLevelUp?: (newLevel: number, title: string) => void;
+
+  constructor() {
+    this.missions = JSON.parse(JSON.stringify(INITIAL_MISSIONS));
+  }
 
   public static getInstance(): QuestManager {
     if (!this.instance) {
@@ -48,39 +26,126 @@ export class QuestManager {
     return this.instance;
   }
 
+  public setPreferredTrack(trackId: string): void {
+    // If student chooses a track on loading screen, promote that mission or set it as primary
+    const trackMap: Record<string, string> = {
+      linux_core: 'task_001',
+      net_recon: 'task_002',
+      web_sec: 'task_003',
+      crypto: 'task_004',
+      threat_hunt: 'task_005'
+    };
+
+    const targetId = trackMap[trackId];
+    if (targetId) {
+      const target = this.missions.find(m => m.id === targetId);
+      if (target && target.status === 'LOCKED') {
+        target.status = 'AVAILABLE';
+      }
+    }
+    this.notifyState();
+  }
+
   public getCurrentMission(): Mission {
     return this.missions.find(m => m.status === 'IN_PROGRESS') ||
            this.missions.find(m => m.status === 'AVAILABLE') ||
            this.missions[0];
   }
 
-  public acceptMission001(): void {
-    const m1 = this.missions[0];
-    if (m1.status === 'AVAILABLE') {
-      m1.status = 'IN_PROGRESS';
-      m1.objectiveText = 'Cross the wooden bridge to Terminal Outpost (press [E]). Locate secret in `/var/backups/token.env`.';
-      if (this.onStateChange) this.onStateChange();
+  public getMission(id: string): Mission | undefined {
+    return this.missions.find(m => m.id === id);
+  }
+
+  public startMission(id: string): void {
+    const m = this.missions.find(x => x.id === id);
+    if (m && (m.status === 'AVAILABLE' || m.status === 'LOCKED')) {
+      m.status = 'IN_PROGRESS';
+      this.notifyState();
     }
   }
 
-  public completeMission001(): void {
-    const m1 = this.missions[0];
-    if (m1.status === 'IN_PROGRESS') {
-      m1.status = 'COMPLETED';
-      m1.objectiveText = 'Mission 001 Complete! Token verified. +100 XP awarded.';
+  public completeStep(missionId: string, stepId: string): void {
+    const m = this.missions.find(x => x.id === missionId);
+    if (!m) return;
 
-      // Add XP & Level Up
-      this.xp += m1.rewardXP;
-      if (this.xp >= this.maxXp) {
-        this.level = 2;
-        this.levelTitle = 'Level 2: Linux Scout';
+    if (m.status === 'AVAILABLE') {
+      m.status = 'IN_PROGRESS';
+    }
+
+    const step = m.steps.find(s => s.id === stepId);
+    if (step && !step.completed) {
+      step.completed = true;
+
+      // Check if all steps in this mission are complete
+      const allDone = m.steps.every(s => s.completed);
+      if (allDone) {
+        this.completeMission(missionId);
+      } else {
+        this.notifyState();
       }
+    }
+  }
 
-      // Unlock Mission 002
-      this.missions[1].status = 'AVAILABLE';
-      this.missions[1].objectiveText = 'Mission 002 Available! Ready for network reconnaissance.';
+  public completeMission(id: string): void {
+    const m = this.missions.find(x => x.id === id);
+    if (!m || m.status === 'COMPLETED') return;
 
-      if (this.onStateChange) this.onStateChange();
+    m.status = 'COMPLETED';
+    m.steps.forEach(s => { s.completed = true; });
+    this.completedCount++;
+    this.xp += m.rewardXP;
+
+    // Add badge
+    if (!this.unlockedBadges.some(b => b.name === m.badgeName)) {
+      this.unlockedBadges.push({ name: m.badgeName, icon: m.badgeIcon });
+    }
+
+    // Update level
+    this.calculateLevel();
+
+    // Unlock next mission in line
+    const currentIndex = this.missions.findIndex(x => x.id === id);
+    if (currentIndex >= 0 && currentIndex + 1 < this.missions.length) {
+      const nextMission = this.missions[currentIndex + 1];
+      if (nextMission.status === 'LOCKED') {
+        nextMission.status = 'AVAILABLE';
+      }
+    }
+
+    if (this.onMissionCompleted) {
+      this.onMissionCompleted(m);
+    }
+
+    this.notifyState();
+  }
+
+  private calculateLevel(): void {
+    const oldLevel = this.level;
+    if (this.xp >= 900) {
+      this.level = 5;
+      this.levelTitle = 'Cyber Master';
+    } else if (this.xp >= 600) {
+      this.level = 4;
+      this.levelTitle = 'Security Sentinel';
+    } else if (this.xp >= 350) {
+      this.level = 3;
+      this.levelTitle = 'Defense Specialist';
+    } else if (this.xp >= 100) {
+      this.level = 2;
+      this.levelTitle = 'Linux Scout';
+    } else {
+      this.level = 1;
+      this.levelTitle = 'Novice Explorer';
+    }
+
+    if (this.level > oldLevel && this.onLevelUp) {
+      this.onLevelUp(this.level, this.levelTitle);
+    }
+  }
+
+  private notifyState(): void {
+    if (this.onStateChange) {
+      this.onStateChange();
     }
   }
 }

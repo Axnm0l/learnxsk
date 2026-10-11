@@ -1,59 +1,73 @@
 import { QuestManager } from '../quest/QuestManager';
 
 export class QuestBoardUI {
-  private modal: HTMLElement;
-  private closeBtn: HTMLElement;
-  private acceptBtn: HTMLElement;
-  private titleElem: HTMLElement;
-  private bodyElem: HTMLElement;
-  private questManager: QuestManager;
+  private modalEl: HTMLElement;
+  private titleEl: HTMLElement;
+  private bodyEl: HTMLElement;
+  private acceptBtnEl: HTMLButtonElement;
+  private closeBtnEl: HTMLElement;
+  private qm: QuestManager;
 
-  constructor(questManager: QuestManager) {
-    this.questManager = questManager;
-    this.modal = document.getElementById('quest-modal')!;
-    this.closeBtn = document.getElementById('quest-close-btn')!;
-    this.acceptBtn = document.getElementById('quest-accept-btn')!;
-    this.titleElem = document.getElementById('quest-modal-title')!;
-    this.bodyElem = document.getElementById('quest-modal-body')!;
+  constructor(qm: QuestManager) {
+    this.qm = qm;
+    this.modalEl = document.getElementById('quest-modal')!;
+    this.titleEl = document.getElementById('quest-modal-title')!;
+    this.bodyEl = document.getElementById('quest-modal-body')!;
+    this.acceptBtnEl = document.getElementById('quest-accept-btn') as HTMLButtonElement;
+    this.closeBtnEl = document.getElementById('quest-close-btn')!;
 
-    this.closeBtn.addEventListener('click', () => this.close());
-    this.acceptBtn.addEventListener('click', () => {
-      this.questManager.acceptMission001();
+    this.initEvents();
+  }
+
+  private initEvents(): void {
+    this.closeBtnEl?.addEventListener('click', () => this.close());
+
+    this.acceptBtnEl?.addEventListener('click', () => {
+      const curr = this.qm.getCurrentMission();
+      this.qm.startMission(curr.id);
       this.close();
-    });
-
-    // Close on backdrop click
-    this.modal.addEventListener('click', (e) => {
-      if (e.target === this.modal) this.close();
     });
   }
 
   public open(): void {
-    const mission = this.questManager.missions[0];
-    if (mission.status === 'COMPLETED') {
-      this.titleElem.textContent = 'ALL QUESTS COMPLETED!';
-      this.bodyElem.innerHTML = 'Outstanding work, Cadet! You have recovered the outpost configuration files and earned your field stripes.<br><br>Ready for Mission 002: Network Reconnaissance.';
-      this.acceptBtn.style.display = 'none';
-    } else if (mission.status === 'IN_PROGRESS') {
-      this.titleElem.textContent = mission.number + ': IN PROGRESS';
-      this.bodyElem.innerHTML = 'Head east across the wooden bridge to the <strong>Terminal Outpost Station</strong>.<br><br>Interact with the terminal screen and use `cd /var/backups` and `cat token.env` to complete the mission.';
-      this.acceptBtn.textContent = 'CONTINUE MISSION';
-      this.acceptBtn.style.display = 'inline-block';
-    } else {
-      this.titleElem.textContent = mission.number + ': ' + mission.title.toUpperCase();
-      this.bodyElem.innerHTML = mission.description + '<br><br>Accept this mission to begin your Linux explorer training!';
-      this.acceptBtn.textContent = 'ACCEPT MISSION';
-      this.acceptBtn.style.display = 'inline-block';
+    const curr = this.qm.getCurrentMission();
+
+    if (this.titleEl) {
+      this.titleEl.innerText = `${curr.number}: ${curr.title.toUpperCase()}`;
     }
 
-    this.modal.style.display = 'flex';
+    if (this.bodyEl) {
+      this.bodyEl.innerHTML = `
+        <div style="margin-bottom: 0.85rem; color: #cbd5e1; font-size: 0.65rem; line-height: 1.7;">
+          ${curr.description}
+        </div>
+
+        <div style="background: rgba(15, 23, 42, 0.9); border: 1px solid #334155; border-radius: 4px; padding: 0.75rem; margin-bottom: 0.85rem;">
+          <div style="font-weight: 700; color: #fbbf24; font-size: 0.62rem; margin-bottom: 0.4rem;">STATION ASSIGNMENT:</div>
+          <div style="font-size: 0.64rem; color: #f8fafc;">📍 <strong>${curr.stationName}</strong></div>
+          <div style="font-size: 0.58rem; color: #94a3b8; margin-top: 0.35rem;">TARGET COORDINATES: [X: ${curr.stationLocation[0]}, Z: ${curr.stationLocation[1]}]</div>
+        </div>
+
+        <div style="background: rgba(15, 23, 42, 0.9); border: 1px solid #22c55e; border-radius: 4px; padding: 0.75rem;">
+          <div style="color: #22c55e; font-weight: 700; font-size: 0.62rem;">REWARDS ON COMPLETION:</div>
+          <div style="color: #f8fafc; font-size: 0.62rem; margin-top: 0.3rem;">+${curr.rewardXP} XP &bull; BADGE: ${curr.badgeIcon} <strong>${curr.badgeName}</strong></div>
+        </div>
+      `;
+    }
+
+    if (this.acceptBtnEl) {
+      this.acceptBtnEl.innerText = curr.status === 'COMPLETED' ? 'MISSION COMPLETED ✓' : 'START / TRACK MISSION';
+      this.acceptBtnEl.disabled = curr.status === 'COMPLETED';
+    }
+
+    this.modalEl.classList.add('open');
   }
 
   public close(): void {
-    this.modal.style.display = 'none';
+    this.modalEl.classList.remove('open');
   }
 
   public isOpen(): boolean {
-    return this.modal.style.display === 'flex';
+    return this.modalEl.classList.contains('open');
   }
 }

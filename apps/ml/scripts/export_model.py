@@ -211,6 +211,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--adapter", default=None,
                         help="Adapter directory; defaults to the configured adapter_dir.")
     parser.add_argument("--force-past-resource-gate", action="store_true")
+    parser.add_argument("--merge", action="store_true",
+                        help="Actually perform the LoRA merge into the base weights and "
+                             "save a merged checkpoint. Without this flag the merge is "
+                             "reported as NOT EXECUTED, never as written.")
     _common.add_common_args(parser)
     args = parser.parse_args(argv)
 
@@ -248,17 +252,48 @@ def main(argv: list[str] | None = None) -> int:
                            "size_bytes": destination.stat().st_size})
     report["steps"]["adapter_package"] = {"verdict": "WROTE", "files": copies}
 
-    # Merging needs the base weights resident; reuse the training gate's numbers.
+    # The merge is only claimed when it is actually performed. Deciding a merge
+    # "would fit" is not the same as merging, and an earlier version of this
+    # script conflated the two.
     import train_lora  # noqa: PLC0415
     gate = train_lora.resource_gate(config, args.out_root, args.force_past_resource_gate)
-    merge_verdict = "WROTE" if gate["verdict"] != "BLOCKED" else "BLOCKED"
-    merge_status = {
-        "verdict": merge_verdict,
-        "reason": ("free RAM is sufficient for the base checkpoint"
-                   if merge_verdict == "WROTE"
-                   else "; ".join(gate["reasons"])),
-        "gate": gate,
-    }
+    merge_status: dict[str, Any] = {"gate": gate, "merge_flags": config["lora"]}
+
+    if not args.merge:
+        merge_status.update({
+            "verdict": "NOT EXECUTED",
+            "reason": "pass --merge to perform the merge; this run only packaged the "
+                      "adapter",
+        })
+    elif gate["verdict"] == "BLOCKED":
+        merge_status.update({
+            "verdict": "BLOCKED",
+            "reason": "; ".join(gate["reasons"]),
+        })
+    else:
+        merged_dir = export_dir / "merged"
+        try:
+            import torch  # noqa: PLC0415
+            import peft  # noqa: PLC0415
+            import transformers  # noqa: PLC0415
+            model_cfg = config["model"]
+            base = transformers.Gemma4ForCausalLM.from_pretrained(
+                model_cfg["id"], dtype=torch.bfloat16,
+                device_map=model_cfg.get("device_map", "auto"),
+                trust_remote_code=bool(model_cfg.get("trust_remote_code", False)))
+            peft_model = peft.PeftModel.from_pretrained(base, str(adapter_src))
+            merged = peft_model.merge_and_unload()
+            merged.save_pretrained(str(merged_dir))
+            merge_status.update({
+                "verdict": "WROTE",
+                "merged_dir": str(merged_dir),
+                "merged_files": sorted(p.name for p in merged_dir.iterdir()),
+            })
+        except Exception as exc:  # noqa: BLE001 - report the real failure verbatim
+            merge_status.update({
+                "verdict": "FAILED",
+                "reason": f"{type(exc).__name__}: {exc}",
+            })
     report["steps"]["merge_lora_into_base"] = merge_status
     report["steps"]["gguf_base_export"] = {
         "verdict": "NOT RUN",

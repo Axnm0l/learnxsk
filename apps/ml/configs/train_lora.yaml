@@ -8,6 +8,13 @@ model:
   # Verified against transformers >= 5.x, which ships Gemma4 (added 2026-04-02).
   # The Ollama tag gemma4:e2b corresponds to this Hugging Face checkpoint.
   id: google/gemma-4-E2B-it
+  # Read from the safetensors header of model.safetensors: 2,011 tensors, all
+  # bf16, 5,123,178,051 parameters stored in 9.54 GiB. The "E2B" name refers to
+  # effective inference cost, NOT to 2 billion checkpoint parameters - the raw
+  # count is 5.12 B because the per-layer embedding tables are real parameters.
+  # Every memory estimate in the gate is derived from this number.
+  parameter_count: 5123178051
+  stored_dtype: bfloat16
   fallback_ids:
     - google/gemma-4-E4B-it      # ~2x size, still plausible on a 16 GB machine
   revision: main
@@ -49,7 +56,16 @@ lora:
   modules_to_save: []
 
 training:
-  max_seq_len: 1024            # keeps activation memory sane on 16 GB RAM
+  # Measured, not estimated: `apps/ml/scripts/analyze_lengths.py` tokenized every
+  # split with the real Gemma 4 tokenizer and chat template.
+  #   train: 17,488 rows, p50=636, p95=775, p99=905, max=1199
+  #   validation:  971 rows, max=1161
+  #   test:      1,002 rows, max=1156
+  # Rows over 1024: 139 / 6 / 8. Rows over 1536: 0 / 0 / 0.
+  # Rows whose PROMPT alone exceeds the limit: 0 at every limit.
+  # 1536 therefore truncates nothing in any split, so no example is shortened,
+  # split or excluded. See reports/token_length_analysis.md.
+  max_seq_len: 1536
   per_device_train_batch_size: 1
   gradient_accumulation_steps: 8
   num_train_epochs: 1

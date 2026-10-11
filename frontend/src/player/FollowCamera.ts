@@ -8,7 +8,9 @@ export class FollowCamera {
   private currentLookAt: THREE.Vector3 = new THREE.Vector3();
 
   constructor(container: HTMLElement) {
-    this.aspect = container.clientWidth / container.clientHeight;
+    const width = container.clientWidth || window.innerWidth || 800;
+    const height = container.clientHeight || window.innerHeight || 600;
+    this.aspect = width / height;
     this.camera = new THREE.OrthographicCamera(
       (-this.frustumSize * this.aspect) / 2,
       (this.frustumSize * this.aspect) / 2,
@@ -28,7 +30,9 @@ export class FollowCamera {
   }
 
   public handleResize(width: number, height: number): void {
-    this.aspect = width / height;
+    const w = width || window.innerWidth || 800;
+    const h = height || window.innerHeight || 600;
+    this.aspect = w / h;
     this.camera.left = (-this.frustumSize * this.aspect) / 2;
     this.camera.right = (this.frustumSize * this.aspect) / 2;
     this.camera.top = this.frustumSize / 2;

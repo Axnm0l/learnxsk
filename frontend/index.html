@@ -3,78 +3,80 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LearnXSK: The Blocklands — 2D Isometric Three.js Adventure</title>
+  <title>LearnXSK: The Cyber Blocklands — Interactive Cyber Academy</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
   <div id="game-container"></div>
 
+  <!-- IN-GAME HUD -->
   <div id="hud">
     <div class="top-bar">
-      <div class="brand-badge">
-        <div class="brand-title">LEARNXSK: BLOCKLANDS</div>
-        <div class="brand-subtitle">3D-Isometric Procedural Grassland Adventure</div>
+      <!-- BRAND & STATUS -->
+      <div class="brand-badge pixel-badge">
+        <div class="brand-row">
+          <span class="status-pulse-dot"></span>
+          <span class="brand-title">LEARNXSK // BLOCKLANDS</span>
+        </div>
+        <div class="brand-subtitle">CITADEL ACADEMY &bull; 64x64</div>
       </div>
 
-      <div class="player-stats-card">
-        <div class="level-row">
-          <span class="level-title" id="hud-level-text">Level 1: Novice Explorer</span>
-          <span class="xp-count" id="hud-xp-text">0 / 100 XP</span>
+      <!-- PLAYER PROFILE & PIXEL STATS -->
+      <div class="player-stats-card pixel-stats-card">
+        <div class="pixel-stat-header">
+          <span class="pixel-level-title" id="hud-level-text">LVL 1 // NOVICE</span>
+          <span class="pixel-xp-val" id="hud-xp-text">0/1000 XP</span>
         </div>
-        <div class="progress-bar-track">
-          <div class="progress-bar-fill" id="hud-xp-fill"></div>
+
+        <!-- PIXELATED HEALTH HEARTS -->
+        <div class="pixel-stat-row">
+          <span class="pixel-stat-label hp-label">HP</span>
+          <div class="pixel-hearts-row" id="hud-health-hearts"></div>
+        </div>
+
+        <!-- PIXELATED XP HEARTS -->
+        <div class="pixel-stat-row">
+          <span class="pixel-stat-label xp-label">XP</span>
+          <div class="pixel-hearts-row" id="hud-xp-hearts"></div>
         </div>
       </div>
     </div>
 
-    <div>
-      <div class="objective-banner" id="hud-objective-banner">
-        <div class="objective-header">
-          <span class="objective-tag" id="hud-mission-id">MISSION 001</span>
-          <span class="objective-name" id="hud-mission-title">First Foothold</span>
-        </div>
-        <div class="objective-desc" id="hud-mission-desc">
-          Explore the grassy village, approach the Quest Board and press [E] to accept your first assignment!
-        </div>
-      </div>
-    </div>
-
+    <!-- BOTTOM CONTROLS -->
     <div class="bottom-bar">
-      <div class="controls-pill">
+      <div class="controls-pill pixel-controls-pill">
         <div><span class="key-badge">W</span><span class="key-badge">A</span><span class="key-badge">S</span><span class="key-badge">D</span> Move</div>
-        <div><span class="key-badge">SHIFT</span> Run</div>
+        <div><span class="key-badge">SHIFT</span> Sprint</div>
+        <div><span class="key-badge">P</span> Pause</div>
         <div><span class="key-badge">E</span> Interact</div>
-      </div>
-      <div class="controls-pill">
-        <span id="world-pos-indicator">Blocklands Outpost [0, 0]</span>
+        <div><span class="key-badge">M</span> Tasks</div>
+        <div><span class="key-badge">T</span> Terminal</div>
+        <div><span class="key-badge">G</span> Tutor</div>
       </div>
     </div>
   </div>
 
-  <!-- FLOATING PROMPT -->
+  <!-- FLOATING INTERACTION PROMPT -->
   <div id="interact-prompt">
-    <span class="key-badge" style="font-size: 1rem; padding: 0.2rem 0.6rem;">E</span>
-    <span id="interact-text">Inspect Quest Board</span>
+    <span class="key-badge">E</span>
+    <span id="interact-text">Interact</span>
   </div>
 
   <!-- QUEST BOARD MODAL -->
   <div class="modal-overlay" id="quest-modal">
     <div class="quest-card">
       <button class="modal-close-btn" id="quest-close-btn">&times;</button>
-      <h2 id="quest-modal-title">MISSION 001: THE LOST CONFIG</h2>
+      <div class="quest-card-header">
+        <span class="modal-badge">ACADEMY DISPATCH</span>
+        <h2 id="quest-modal-title">MISSION ASSIGNMENT</h2>
+      </div>
       <div class="quest-body" id="quest-modal-body">
-        Welcome, Explorer! The outpost computer system rebooted and mislaid its core configuration files.
-        <br><br>
-        Navigate across the wooden bridge to the <strong>Terminal Outpost Station</strong>. Access the virtual Linux terminal and locate the secret verification token hidden inside the backup directory.
+        Loading mission briefing...
       </div>
-      <div class="quest-reward">
-        <div><strong>Reward:</strong> +100 XP</div>
-        <div><strong>Unlocks:</strong> Mission 002 — Network Reconnaissance</div>
-      </div>
-      <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 0.5rem;">
+      <div class="quest-modal-footer">
         <button class="btn-action" id="quest-accept-btn">ACCEPT MISSION</button>
       </div>
     </div>
@@ -85,34 +87,43 @@
     <div class="terminal-window">
       <div class="terminal-titlebar">
         <div class="terminal-dots">
-          <div class="terminal-dot dot-red" id="term-close-dot" style="cursor: pointer;"></div>
+          <div class="terminal-dot dot-red" id="term-close-dot" title="Close Shell"></div>
           <div class="terminal-dot dot-yellow"></div>
           <div class="terminal-dot dot-green"></div>
         </div>
-        <div class="terminal-title">cadet@outpost-vfs: ~ (LearnXSK Linux Terminal Simulator)</div>
-        <button class="modal-close-btn" id="terminal-close-btn" style="position: static; width: 24px; height: 24px; font-size: 0.9rem;">&times;</button>
+        <div class="terminal-title">cadet@blocklands-node: ~ (Linux Virtual Filesystem v2.0)</div>
+        <button class="modal-close-btn" id="terminal-close-btn">&times;</button>
       </div>
 
       <div class="terminal-screen" id="terminal-screen">
-        <p class="term-info">========================================================</p>
-        <p class="term-info">  LEARNXSK VIRTUAL LINUX SYSTEM — TERMINAL SHELL v1.4   </p>
-        <p class="term-info">  Type 'help' for available commands, 'hint' for tutor </p>
-        <p class="term-info">========================================================</p>
-        <p class="term-stdout">System initialized. Logged in as user 'cadet'. Current dir: /home/cadet</p>
+        <p class="term-info">=============================================================</p>
+        <p class="term-info">  LEARNXSK CYBER LINUX ENVIRONMENT — BASH SIMULATOR v2.0     </p>
+        <p class="term-info">  Type 'help' for commands, 'scan' for network, 'gemma' for AI </p>
+        <p class="term-info">=============================================================</p>
+        <p class="term-stdout">Connected to host: outpost-cyber-node (192.168.1.50). Session authorized as 'cadet'.</p>
       </div>
 
       <div id="tutor-box">
-        <strong>Gemma AI Tutor:</strong> <span id="tutor-text">Analyzing your progress...</span>
+        <div class="tutor-icon-tag">🤖 GEMMA 4 TUTOR:</div>
+        <span id="tutor-text">Analyzing your command telemetry...</span>
       </div>
 
       <div class="terminal-input-bar">
-        <span class="prompt-label" id="terminal-prompt-label">cadet@outpost:~$</span>
-        <input type="text" class="terminal-input" id="terminal-input" autocomplete="off" spellcheck="false" placeholder="type command (ls, cd, cat, grep, hint, help)..." />
+        <span class="prompt-label" id="terminal-prompt-label">cadet@blocklands:~$</span>
+        <input type="text" class="terminal-input" id="terminal-input" autocomplete="off" spellcheck="false" placeholder="type Linux command (ls, cat, grep, scan, curl, base64, rm, gemma)..." />
       </div>
 
       <div class="terminal-actions-bar">
-        <span>Simulated Filesystem &bull; Safe Sandbox</span>
-        <button class="btn-tutor" id="terminal-hint-btn">Ask Gemma Tutor</button>
+        <div class="quick-chip-row">
+          <span>Quick:</span>
+          <button class="quick-chip" onclick="document.getElementById('terminal-input').value='ls -la'; document.getElementById('terminal-input').focus();">ls -la</button>
+          <button class="quick-chip" onclick="document.getElementById('terminal-input').value='cat /var/backups/token.env'; document.getElementById('terminal-input').focus();">cat token</button>
+          <button class="quick-chip" onclick="document.getElementById('terminal-input').value='scan'; document.getElementById('terminal-input').focus();">scan</button>
+          <button class="quick-chip" onclick="document.getElementById('terminal-input').value='curl http://internal/api/auth'; document.getElementById('terminal-input').focus();">curl auth</button>
+          <button class="quick-chip" onclick="document.getElementById('terminal-input').value='base64 -d /etc/crypto/intercept.b64'; document.getElementById('terminal-input').focus();">base64 -d</button>
+          <button class="quick-chip" onclick="document.getElementById('terminal-input').value='grep &quot;eval&quot; /var/log/access.log'; document.getElementById('terminal-input').focus();">grep eval</button>
+        </div>
+        <button class="btn-tutor" id="terminal-hint-btn">⚡ Ask Gemma Tutor</button>
       </div>
     </div>
   </div>

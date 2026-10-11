@@ -82,46 +82,61 @@ laptop-class machine cannot afford a large KV cache alongside the model.
 
 ---## 3. Wiring it into the game client
 
-**Read this before copying the filename from an older doc.** The Unity client
-these docs previously referenced (`Game/Assets/LearnXSK/Scripts/LocalGemmaClient.cs`)
-is **not in this repository any more** - the whole `Game/` Unity project was
-removed in commit `24bee43` ("cleanup build artifacts"). The live client today is
-the TypeScript one:
+**Read this before copying a filename from an older doc.** The Unity client these
+docs previously referenced (`Game/Assets/LearnXSK/Scripts/LocalGemmaClient.cs`) is
+**not in this repository any more** - the Unity project was removed before this
+pipeline was built. The live client is:
 
 ```
 frontend/src/ai/GemmaClient.ts
 ```
 
-It does **not** call Ollama directly. It `POST`s to a local `/api/hint` endpoint
-with a 5-second `AbortController` timeout and falls back to a canned hint when
-that endpoint is unreachable:
+As it stands in the working tree, that client calls Ollama **directly** over
+HTTP and picks the model from a single field:
 
 ```ts
-private static readonly ENDPOINT = '/api/hint';
+private ollamaUrl: string = 'http://localhost:11434/api/generate';
+private modelName: string = 'gemma2:2b'; // or gemma4 when loaded
 ```
 
-So the model tag is chosen by whatever serves `/api/hint`, not by the frontend.
-Two cases:
+It is a singleton (`GemmaClient.getInstance()`), and when Ollama is unreachable it
+falls back to built-in "local-intelligence" answers rather than failing, so a
+wrong model tag degrades quietly instead of throwing.
 
-* **Serving through that local API** - set the model there. Today's verified runtime
-  tag is `gemma4:e2b` (`ollama list` shows it, 4.6 GB, and a live `/api/chat`
-  request against it returned a valid response on this machine). After a
-  successful export use `learnxsk-tutor` instead.
-* **Talking to Ollama directly from a client** - the Ollama endpoint is
-  `http://127.0.0.1:11434/api/chat` with `{"model": "learnxsk-tutor", ...}`.
-  Keep the 5-second style timeout in mind: Gemma 4's thinking mode can take far
-  longer than that on CPU, so a short timeout will silently degrade to the
-  fallback hint.
+### The one-line change
+
+To use the model that is actually installed and verified on this machine, change
+that field to the Ollama tag:
+
+```ts
+private modelName: string = 'gemma4:e2b';    // verified: `ollama list` shows it, 4.6 GB
+```
+
+After a successful export, point it at the adapter tag instead:
+
+```ts
+private modelName: string = 'learnxsk-tutor';
+```
+
+This pipeline does **not** edit that field: the file was being changed by another
+workstream while this pipeline was built, so the change is documented here rather
+than applied on top of someone else's in-flight edit.
 
 Two practical notes for the integration:
 
+* The client's default is still `gemma2:2b`. Until that line changes, the game
+  asks Ollama for a model tag that is not the active one.
 * The training rows use a **system prompt** that frames answers as defensive,
-  lab-safe guidance. The generated `Modelfile` sets the same text as `SYSTEM`,
-  so serving behaviour matches what the adapter saw during training. If you
-  change the serving prompt, change the Modelfile too.
-* `frontend/src/quest/VirtualFilesystem.ts` contains a in-game file whose content
-  reads `AI_TUTOR=gemma2:2b`. That string was updated to `gemma4:e2b` as part of
-  this work because it no longer matched the installed model.
+  lab-safe guidance. The generated `Modelfile` sets the same text as `SYSTEM`, so
+  serving behaviour matches what the adapter saw during training. If you change
+  the serving prompt, change the Modelfile too.
+* Gemma 4's thinking mode adds latency on CPU. `/api/generate` has no timeout in
+  this client, so a slow model will look like a hang rather than a fallback.
+
+### In-game labels
+
+The interactive shell prints `AI_MENTOR=gemma4` and calls the tutor "GEMMA 4" in
+its UI strings, which matches the installed runtime.
 
 ---
 

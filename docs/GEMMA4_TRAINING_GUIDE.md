@@ -181,10 +181,10 @@ a 16 GiB machine.
 | -> `exclude` | 2,580 | nested CyberMetric subsets |
 | -> `reference_only` | 2,420 | NICE taxonomy, no prompts |
 | After dedupe | 40,363 | -2,516 exact, -234 near |
-| After quality filter | 35,242 | -5,230 |
+| After quality filter | 35,242 | -5,121 |
 | SFT rows written | 19,461 | `sft_train` only |
-| Splits | 17,390 / 967 / 995 | train / validation / test |
-| Evaluation set | 415 | 400 MCQ + 15 open |
+| Splits | 17,488 / 971 / 1,002 | train / validation / test (89.86% / 4.99% / 5.15%) |
+| Evaluation set | 422 | 400 MCQ + 22 open |
 
 `format_sft.py` reports approximate token counts (characters / 4):
 p50 = 884, p95 = 1,058, max = 1,762, with **1,582 rows above the 1,024
@@ -263,4 +263,4 @@ the resolved root - including `..` traversal.
   and reload path all work. Its loss (~12.5) and its evaluation scores carry no
   meaning.
 * **CPU-only.** Even unblocked, the installed torch build would use the CPU.
-* **Smoke scale.** 20 optimiser steps over 17,390 rows is plumbing, not learning.
+* **Smoke scale.** 20 optimiser steps over 17,488 rows is plumbing, not learning.

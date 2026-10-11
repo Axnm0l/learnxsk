@@ -78,7 +78,7 @@ All numbers below were computed by `audit_datasets.py` and the pipeline stages.
 | SecBench snapshot has 2,730 MCQs / 270 SAQs, not the 44,823 / 3,087 the paper reports | Reported as a partial snapshot. |
 | `cti-taa.tsv` ships **no** ground-truth column | Prompt-only rows, flagged `no_ground_truth_in_snapshot`; they cannot contribute to a scored metric. |
 | 2,516 exact and 234 near duplicate rows | Removed by `dedupe.py`. |
-| Credential-shaped strings (22 assignments, 6 emails) | **Masked, not dropped**: the row still teaches, the fake secret does not ship. |
+| Credential-shaped strings (22 assignments, 7 emails) | **Masked, not dropped**: the row still teaches, the fake secret does not ship. |
 
 ### Rules that had to be script-aware
 

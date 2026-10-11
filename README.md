@@ -72,7 +72,11 @@ LearnXSK/
 ## Local Gemma AI Integration
 
 - **Runtime:** Local Ollama (`http://127.0.0.1:11434`)
-- **Active Model:** `gemma4:e2b` (installed and verified locally)
+- **Installed Model:** `gemma4:e2b` (installed and verified locally)
+- **Client Default:** `frontend/src/ai/GemmaClient.ts` still declares
+  `private modelName = 'gemma2:2b'`. Point it at `gemma4:e2b` (or at the
+  fine-tuned tag) to match the installed model - see
+  [`docs/MODEL_DEPLOYMENT.md`](docs/MODEL_DEPLOYMENT.md).
 - **Security & Privacy:** 100% on-device local inference. No gameplay telemetry or prompts are ever transmitted to cloud APIs.
 
 ### Fine-tuning on the cyber datasets

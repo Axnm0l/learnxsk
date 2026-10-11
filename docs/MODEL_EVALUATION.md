@@ -19,15 +19,15 @@ are produced as soon as both reports exist.
 
 ## 1. The evaluation set
 
-Built by `split_dataset.py` into `training/evaluation/eval_set.jsonl` - **415
+Built by `split_dataset.py` into `training/evaluation/eval_set.jsonl` - **422
 rows**, from sources that training never sees:
 
 | Source | Kind | Rows | Cap |
 |---|---|---:|---:|
 | CyberMetric (10,000 file) | multiple choice | 200 | 200 |
 | SecBench MCQs | multiple choice | 200 | 200 |
+| SecBench SAQs | open answer (test split) | 15 | 50 |
 | CyberSec-Bench | open answer (test split) | 7 | 50 |
-| SecBench SAQs | open answer (test split) | 8 | 50 |
 
 Open-answer rows are drawn from the **test split**, so they are held out by
 construction. MCQ rows come from files the manifest marks `eval_only`. Caps live
