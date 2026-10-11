@@ -35,7 +35,12 @@ DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / "configs" / "train_lor
 
 CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u3040-\u30ff]")
 TOKEN_RE = re.compile(r"[A-Za-z0-9_']+")
-LETTER_RE = re.compile(r"\b([A-H])\b")
+# A letter only counts as an answer when it stands alone ("B", "(B)", "answer: B")
+# rather than appearing inside a word. A greedy fallback that scanned the whole
+# response for any A-H character would silently turn "The C programming language"
+# into an answer, inflating accuracy on prose answers.
+LETTER_RE = re.compile(r"(?:(?<=^)|(?<=[\s(*\[:]))([A-H])(?=[\s.,;:)!\]*]|$)")
+LETTER_SCAN_CHARS = 60
 
 
 def script_tokens(text: str) -> list[str]:
@@ -65,9 +70,8 @@ def exact_match(prediction: str, reference: str) -> float:
 
 
 def extract_letters(text: str) -> str:
-    letters = LETTER_RE.findall(text.upper())
-    if not letters:
-        letters = re.findall(r"[A-H]", text.upper()[:24])
+    """Return the sorted set of standalone option letters in a response."""
+    letters = LETTER_RE.findall(text.upper()[:LETTER_SCAN_CHARS])
     return "".join(sorted(set(letters)))
 
 

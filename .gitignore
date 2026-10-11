@@ -75,3 +75,24 @@ __pycache__/
 .venv/
 env/
 venv/
+
+# =========================================================================
+# ML pipeline artifacts
+# -------------------------------------------------------------------------
+# These are generated OUTSIDE the repository, under
+# C:\Users\anmol\OneDrive\Desktop\hackathon\training. The patterns below only
+# catch stray copies so generated data can never be committed by accident.
+# =========================================================================
+/apps/ml/**/outputs/
+/apps/ml/**/runs/
+/apps/ml/**/adapters/
+/apps/ml/**/exports/
+/apps/ml/**/*.jsonl.tmp
+/training/
+*.jsonl.tmp
+
+# Web build & dependencies
+node_modules/
+dist/
+.vite/
+*.local

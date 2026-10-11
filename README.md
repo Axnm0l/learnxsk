@@ -72,8 +72,27 @@ LearnXSK/
 ## Local Gemma AI Integration
 
 - **Runtime:** Local Ollama (`http://127.0.0.1:11434`)
-- **Active Model:** `gemma2:2b` (tested and verified with smoke test `GEMMA_LOCAL_OK`)
+- **Active Model:** `gemma4:e2b` (installed and verified locally)
 - **Security & Privacy:** 100% on-device local inference. No gameplay telemetry or prompts are ever transmitted to cloud APIs.
+
+### Fine-tuning on the cyber datasets
+
+The `apps/ml` pipeline turns the read-only cybersecurity corpora into a LoRA
+adapter for `google/gemma-4-E2B-it`. It covers dataset auditing, dedupe, quality
+filtering, chat formatting, deterministic splits, a gated smoke trainer, base-vs-tuned
+evaluation and an export/deployment package.
+
+| Document | Contents |
+|---|---|
+| [`docs/GEMMA4_TRAINING_GUIDE.md`](docs/GEMMA4_TRAINING_GUIDE.md) | environment, blockers, commands, results |
+| [`docs/DATASET_AUDIT.md`](docs/DATASET_AUDIT.md) | sources, licences, quality findings |
+| [`docs/MODEL_EVALUATION.md`](docs/MODEL_EVALUATION.md) | metrics and what was actually run |
+| [`docs/MODEL_DEPLOYMENT.md`](docs/MODEL_DEPLOYMENT.md) | export, GGUF, Ollama and Unity wiring |
+| [`apps/ml/README.md`](apps/ml/README.md) | pipeline reference |
+
+Training the real checkpoint is blocked on this machine (9.54 GiB of weights
+against 1.17-2.66 GiB of free RAM, and a CPU-only torch wheel); the guide records
+the measured evidence and exactly what would unblock it.
 
 ---
 
@@ -83,7 +102,7 @@ LearnXSK/
 - **Unity Version:** Unity 6 (6000.x) or Unity 2022.3 LTS
 - **Runtime Dependencies:**
   - .NET 8.0 / 10.0 SDK for C# compilation
-  - Ollama with `gemma2:2b` running at `localhost:11434`
+  - Ollama with `gemma4:e2b` running at `localhost:11434`
 - **To Launch in Unity Editor:**
   1. Open **Unity Hub**.
   2. Click **Add** -> **Add project from disk**.

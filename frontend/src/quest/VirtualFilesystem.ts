@@ -60,7 +60,7 @@ export class VirtualFilesystem {
     backups.children!['config.bak'] = {
       name: 'config.bak',
       isDir: false,
-      content: '# LearnXSK Outpost Configuration Backup\nPORT=5173\nHOST=127.0.0.1\nENV=production\nAI_TUTOR=gemma2:2b',
+      content: '# LearnXSK Outpost Configuration Backup\nPORT=5173\nHOST=127.0.0.1\nENV=production\nAI_TUTOR=gemma4:e2b',
       parent: backups
     };
 
