@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LearnXSK: The Blocklands — 2D Isometric Three.js Adventure</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #182312;
+      font-family: 'Outfit', sans-serif;
+      color: #e2e8f0;
+    }
+
+    #game-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+
+    /* HUD OVERLAYS */
+    #hud {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 1.25rem;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      pointer-events: auto;
+    }
+
+    .brand-badge {
+      background: rgba(18, 28, 14, 0.88);
+      border: 2px solid #5b8738;
+      border-radius: 12px;
+      padding: 0.75rem 1.25rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(8px);
+    }
+
+    .brand-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.85rem;
+      color: #a7f369;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+      letter-spacing: 0.05em;
+      margin-bottom: 0.35rem;
+    }
+
+    .brand-subtitle {
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+
+    .player-stats-card {
+      background: rgba(18, 28, 14, 0.88);
+      border: 2px solid #5b8738;
+      border-radius: 12px;
+      padding: 0.75rem 1.25rem;
+      min-width: 260px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(8px);
+    }
+
+    .level-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .level-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #f8fafc;
+    }
+
+    .xp-count {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.85rem;
+      color: #fbbf24;
+      font-weight: 700;
+    }
+
+    .progress-bar-track {
+      width: 100%;
+      height: 10px;
+      background: #0f1710;
+      border-radius: 5px;
+      overflow: hidden;
+      border: 1px solid #334e21;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #10b981, #a3e635);
+      border-radius: 4px;
+      transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 0 10px rgba(163, 230, 53, 0.5);
+    }
+
+    /* MISSION BAR */
+    .objective-banner {
+      background: rgba(15, 23, 14, 0.92);
+      border: 2px solid #38bdf8;
+      border-radius: 12px;
+      padding: 0.85rem 1.4rem;
+      max-width: 520px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
+      pointer-events: auto;
+      margin-top: 0.5rem;
+    }
+
+    .objective-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .objective-tag {
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      background: #0284c7;
+      color: #f0f9ff;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .objective-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #e0f2fe;
+    }
+
+    .objective-desc {
+      font-size: 0.85rem;
+      color: #94a3b8;
+      line-height: 1.35;
+    }
+
+    /* BOTTOM CONTROLS HINT */
+    .bottom-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .controls-pill {
+      background: rgba(15, 23, 14, 0.85);
+      border: 1px solid #2d451e;
+      border-radius: 20px;
+      padding: 0.5rem 1.1rem;
+      font-size: 0.8rem;
+      color: #cbd5e1;
+      display: flex;
+      gap: 1.25rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      pointer-events: auto;
+    }
+
+    .key-badge {
+      background: #233716;
+      border: 1px solid #4d7c2b;
+      color: #bef264;
+      font-weight: 700;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      margin-right: 0.35rem;
+    }
+
+    /* INTERACTION FLOATING PROMPT */
+    #interact-prompt {
+      position: absolute;
+      top: 42%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(11, 20, 10, 0.92);
+      border: 2px solid #facc15;
+      padding: 0.75rem 1.5rem;
+      border-radius: 30px;
+      box-shadow: 0 0 25px rgba(250, 204, 21, 0.4);
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 700;
+      color: #fef08a;
+      z-index: 20;
+      pointer-events: none;
+      animation: pulsePrompt 1.4s infinite ease-in-out;
+    }
+
+    @keyframes pulsePrompt {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); }
+      50% { transform: translate(-50%, -50%) scale(1.05); }
+    }
+
+    /* MODAL WINDOWS */
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem;
+    }
+
+    /* QUEST BOARD MODAL */
+    .quest-card {
+      background: #1b2816;
+      border: 3px solid #84cc16;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 580px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 20px rgba(132, 204, 22, 0.3);
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      position: relative;
+    }
+
+    .modal-close-btn {
+      position: absolute;
+      top: 1rem;
+      right: 1.25rem;
+      background: #27381f;
+      border: 1px solid #4d7328;
+      color: #94a3b8;
+      font-size: 1.2rem;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .modal-close-btn:hover {
+      background: #dc2626;
+      color: white;
+      border-color: #ef4444;
+    }
+
+    .quest-card h2 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 1.1rem;
+      color: #bef264;
+      line-height: 1.4;
+    }
+
+    .quest-body {
+      background: #121c0e;
+      border: 1px solid #2f491c;
+      border-radius: 10px;
+      padding: 1.25rem;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: #d1d5db;
+    }
+
+    .quest-reward {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+      background: #1e3314;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      border: 1px dashed #65a30d;
+    }
+
+    .btn-action {
+      background: linear-gradient(180deg, #84cc16 0%, #4d7c0f 100%);
+      color: #0f172a;
+      font-weight: 800;
+      font-size: 1rem;
+      padding: 0.85rem 1.5rem;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(101, 163, 13, 0.4);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .btn-action:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(101, 163, 13, 0.6);
+      background: linear-gradient(180deg, #a3e635 0%, #65a30d 100%);
+    }
+
+    /* TERMINAL MODAL */
+    .terminal-window {
+      background: #090d0b;
+      border: 2px solid #22c55e;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 820px;
+      height: 580px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(34, 197, 94, 0.2);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .terminal-titlebar {
+      background: #111a13;
+      padding: 0.6rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #1f3a24;
+    }
+
+    .terminal-dots {
+      display: flex;
+      gap: 0.4rem;
+    }
+
+    .terminal-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+
+    .terminal-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.8rem;
+      color: #86efac;
+    }
+
+    .terminal-screen {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.88rem;
+      color: #4ade80;
+      line-height: 1.5;
+      background: #070c08;
+      cursor: text;
+    }
+
+    .terminal-screen p {
+      margin-bottom: 0.35rem;
+      word-break: break-all;
+    }
+
+    .term-stdout { color: #dcfce7; }
+    .term-error { color: #f87171; }
+    .term-info { color: #38bdf8; }
+    .term-success { color: #facc15; font-weight: bold; }
+    .term-prompt-line { color: #a3e635; }
+
+    .terminal-input-bar {
+      display: flex;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      background: #0e1710;
+      border-top: 1px solid #1d3320;
+    }
+
+    .prompt-label {
+      font-family: 'Space Mono', monospace;
+      color: #86efac;
+      font-size: 0.9rem;
+      margin-right: 0.5rem;
+    }
+
+    .terminal-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #f0fdf4;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .terminal-actions-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      background: #0a110b;
+      border-top: 1px solid #142417;
+      font-size: 0.8rem;
+      color: #6ee7b7;
+    }
+
+    .btn-tutor {
+      background: #065f46;
+      border: 1px solid #10b981;
+      color: #d1fae5;
+      padding: 0.35rem 0.85rem;
+      border-radius: 6px;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-tutor:hover {
+      background: #047857;
+      color: white;
+    }
+
+    /* TUTOR DRAWER */
+    #tutor-box {
+      margin-top: 0.5rem;
+      padding: 0.75rem;
+      background: #064e3b;
+      border: 1px dashed #34d399;
+      border-radius: 8px;
+      color: #ecfdf5;
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.85rem;
+      display: none;
+    }
+
+    #tutor-box.active {
+      display: block;
+      animation: fadeIn 0.3s;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container"></div>
+
+  <div id="hud">
+    <div class="top-bar">
+      <div class="brand-badge">
+        <div class="brand-title">LEARNXSK: BLOCKLANDS</div>
+        <div class="brand-subtitle">3D-Isometric Procedural Grassland Adventure</div>
+      </div>
+
+      <div class="player-stats-card">
+        <div class="level-row">
+          <span class="level-title" id="hud-level-text">Level 1: Novice Explorer</span>
+          <span class="xp-count" id="hud-xp-text">0 / 100 XP</span>
+        </div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="hud-xp-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="objective-banner" id="hud-objective-banner">
+        <div class="objective-header">
+          <span class="objective-tag" id="hud-mission-id">MISSION 001</span>
+          <span class="objective-name" id="hud-mission-title">First Foothold</span>
+        </div>
+        <div class="objective-desc" id="hud-mission-desc">
+          Explore the grassy village, approach the Quest Board and press [E] to accept your first assignment!
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="controls-pill">
+        <div><span class="key-badge">W</span><span class="key-badge">A</span><span class="key-badge">S</span><span class="key-badge">D</span> Move</div>
+        <div><span class="key-badge">SHIFT</span> Run</div>
+        <div><span class="key-badge">E</span> Interact</div>
+      </div>
+      <div class="controls-pill">
+        <span id="world-pos-indicator">Blocklands Outpost [0, 0]</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING PROMPT -->
+  <div id="interact-prompt">
+    <span class="key-badge" style="font-size: 1rem; padding: 0.2rem 0.6rem;">E</span>
+    <span id="interact-text">Inspect Quest Board</span>
+  </div>
+
+  <!-- QUEST BOARD MODAL -->
+  <div class="modal-overlay" id="quest-modal">
+    <div class="quest-card">
+      <button class="modal-close-btn" id="quest-close-btn">&times;</button>
+      <h2 id="quest-modal-title">MISSION 001: THE LOST CONFIG</h2>
+      <div class="quest-body" id="quest-modal-body">
+        Welcome, Explorer! The outpost computer system rebooted and mislaid its core configuration files.
+        <br><br>
+        Navigate across the wooden bridge to the <strong>Terminal Outpost Station</strong>. Access the virtual Linux terminal and locate the secret verification token hidden inside the backup directory.
+      </div>
+      <div class="quest-reward">
+        <div><strong>Reward:</strong> +100 XP</div>
+        <div><strong>Unlocks:</strong> Mission 002 — Network Reconnaissance</div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 0.5rem;">
+        <button class="btn-action" id="quest-accept-btn">ACCEPT MISSION</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TERMINAL MODAL -->
+  <div class="modal-overlay" id="terminal-modal">
+    <div class="terminal-window">
+      <div class="terminal-titlebar">
+        <div class="terminal-dots">
+          <div class="terminal-dot dot-red" id="term-close-dot" style="cursor: pointer;"></div>
+          <div class="terminal-dot dot-yellow"></div>
+          <div class="terminal-dot dot-green"></div>
+        </div>
+        <div class="terminal-title">cadet@outpost-vfs: ~ (LearnXSK Linux Terminal Simulator)</div>
+        <button class="modal-close-btn" id="terminal-close-btn" style="position: static; width: 24px; height: 24px; font-size: 0.9rem;">&times;</button>
+      </div>
+
+      <div class="terminal-screen" id="terminal-screen">
+        <p class="term-info">========================================================</p>
+        <p class="term-info">  LEARNXSK VIRTUAL LINUX SYSTEM — TERMINAL SHELL v1.4   </p>
+        <p class="term-info">  Type 'help' for available commands, 'hint' for tutor </p>
+        <p class="term-info">========================================================</p>
+        <p class="term-stdout">System initialized. Logged in as user 'cadet'. Current dir: /home/cadet</p>
+      </div>
+
+      <div id="tutor-box">
+        <strong>Gemma AI Tutor:</strong> <span id="tutor-text">Analyzing your progress...</span>
+      </div>
+
+      <div class="terminal-input-bar">
+        <span class="prompt-label" id="terminal-prompt-label">cadet@outpost:~$</span>
+        <input type="text" class="terminal-input" id="terminal-input" autocomplete="off" spellcheck="false" placeholder="type command (ls, cd, cat, grep, hint, help)..." />
+      </div>
+
+      <div class="terminal-actions-bar">
+        <span>Simulated Filesystem &bull; Safe Sandbox</span>
+        <button class="btn-tutor" id="terminal-hint-btn">Ask Gemma Tutor</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

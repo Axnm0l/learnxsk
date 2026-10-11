@@ -77,7 +77,26 @@
 | JURY-08 | Update coordination files | DONE | STATUS.md, TASK_BOARD.md updated |
 | JURY-09 | Git commit known-good state | DONE | Tagged as jury-known-good |
 
-## Feature Freeze Status
+---
 
-> **🔒 FEATURE FREEZE ACTIVE** — No new features shall be added post-jury-build.
-> The known-good state is preserved at `Game/Build/StandaloneWin64/LearnXSK_Blocklands.exe`.
+## Three.js Web Game Implementation Status
+
+| Task ID | Task | State | Scope & Verification Details |
+|---|---|---|---|
+| WEB-01 | Environment & Project Initialization | DONE | `web-game/` directory, `package.json`, `tsconfig.json`, `vite.config.ts` |
+| WEB-02 | Procedural Texture Generation | DONE | `ProceduralTextures.ts` generating canvas pixel-art textures for grass, cobble, wood, water, quest board, CRT |
+| WEB-03 | 3D Isometric World Construction | DONE | `IsometricWorld.ts`, `IsoUtils.ts` with instanced blocks, bridge, quest board, terminal outpost |
+| WEB-04 | Controllable Voxel Character & Camera | DONE | `Player.ts`, `FollowCamera.ts` with WASD, walk/sprint cycles, orthographic isometric follow cam |
+| WEB-05 | Linux Virtual Filesystem | DONE | `VirtualFilesystem.ts` with `pwd`, `ls`, `cd`, `cat`, `grep`, and token discovery |
+| WEB-06 | Quest Progression & HUD UI | DONE | `QuestManager.ts`, `HUD.ts`, `QuestBoardUI.ts` — Mission 001 accepted/completed, +100 XP, Lv. 2 |
+| WEB-07 | Terminal Shell & Local Gemma AI Tutor | DONE | `TerminalUI.ts`, `GemmaClient.ts`, `backend/server.js` proxying to local Ollama `gemma2:2b` |
+| WEB-08 | Browser End-to-End Verification | DONE | Verified via browser subagent: movement, interaction, Linux challenge solved, Level 2 upgraded, tutor verified |
+
+---
+
+## Deliverables Summary
+
+- **Standalone Windows Build:** `Game/Build/StandaloneWin64/LearnXSK_Blocklands.exe` (92.2 MB, verified)
+- **Browser Web Game:** `web-game/` (Three.js + Vite, port 5173, verified in browser)
+- **Unity Project:** `Game/` fully preserved intact
+

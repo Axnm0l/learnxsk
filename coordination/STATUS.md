@@ -24,11 +24,12 @@
 | **Unity Editor (6000.6.5f1)** | Unity 6 LTS | ✅ VERIFIED & RUNNING | ✅ YES |
 | **Blocklands Isometric Scene** | Unity 2D Isometric / Orthographic | ✅ COMPILED, BUILT & TESTED | ✅ YES (`Assets/Scenes/BlocklandsIsometric.unity` - Scene 0) |
 | **Standalone Windows Build** | Unity StandaloneWindows64 | ✅ **BUILT & VERIFIED** | ✅ YES (`Game/Build/StandaloneWin64/LearnXSK_Blocklands.exe`, 92.2 MB) |
-| **Procedural Terrain & Props** | C# Procedural Generation | ✅ GENERATED & VERIFIED | ✅ YES (320 isometric blocks, 210 foliage/trees/props) |
-| **Playable Character Controller** | C# Rigidbody2D / Input | ✅ VERIFIED & TESTED | ✅ YES (WASD movement, walk/run, collision, follow cam) |
-| **Quest & Mission Loop** | C# State Machine & HUD | ✅ TESTED & COMPLETED | ✅ YES (Mission 001 completed, +100 XP, Lv. 2, unlocked Mission 002) |
-| **Virtual Linux Terminal** | C# In-Memory VFS | ✅ VERIFIED & EXECUTED | ✅ YES (`ls`, `cd /var/log`, `cat sys_audit.log`, flag detected) |
-| **Local Gemma Tutoring Client** | Ollama Localhost API | ✅ LIVE & INTEGRATED | ✅ YES (gemma2:2b verified running, wired to terminal `hint` command) |
+| **Three.js Web Game** | TypeScript, Vite, Three.js | ✅ **BUILT, RUNNING & VERIFIED** | ✅ YES (`web-game/`, port 5173, `dist/` built) |
+| **Procedural Terrain & Props** | Three.js / C# Procedural Generation | ✅ GENERATED & VERIFIED | ✅ YES (Instanced isometric terrain, outpost, bridge, trees) |
+| **Playable Character Controller** | Three.js Voxel / C# Rigidbody2D | ✅ VERIFIED & TESTED | ✅ YES (WASD movement, walk/run, follow cam, E-interaction) |
+| **Quest & Mission Loop** | Three.js / C# State Machine & HUD | ✅ TESTED & COMPLETED | ✅ YES (Mission 001 completed, +100 XP, Lv. 2, unlocked Mission 002) |
+| **Virtual Linux Terminal** | TypeScript / C# In-Memory VFS | ✅ VERIFIED & EXECUTED | ✅ YES (`ls`, `cd /var/backups`, `cat token.env`, token validated) |
+| **Local Gemma Tutoring Client** | Ollama Localhost API & Proxy | ✅ LIVE & INTEGRATED | ✅ YES (gemma2:2b verified running, wired to terminal `hint` command) |
 
 ## Jury Build
 
