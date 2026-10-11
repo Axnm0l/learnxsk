@@ -66,3 +66,12 @@ weights/
 ollama-cache/
 /tools/gemma-smoke-test/*.log
 /tools/gemma-smoke-test/*.tmp
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+env/
+venv/

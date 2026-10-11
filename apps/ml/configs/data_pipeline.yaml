@@ -1,0 +1,100 @@
+# Data pipeline configuration for the LearnXSK Gemma 4 fine-tune.
+# Consumed by apps/ml/scripts/*.py. Every path under `outputs` is resolved
+# relative to the validated training root (default
+# C:\Users\anmol\OneDrive\Desktop\hackathon\training) and is rejected if it
+# would land inside the datasets directory or the LearnXSK git repository.
+
+seed: 20260402           # fixed seed: splits must be reproducible bit-for-bit
+
+paths:
+  inventory: reports/data_inventory.json
+  manifest: ../../configs/dataset_manifest.yaml   # resolved against the script dir
+  outputs:
+    normalized: processed/normalized_records.jsonl
+    deduped: processed/deduped_records.jsonl
+    filtered: processed/quality_filtered_records.jsonl
+    sft: processed/sft_records.jsonl
+    train: splits/train.jsonl
+    validation: splits/validation.jsonl
+    test: splits/test.jsonl
+    eval_set: evaluation/eval_set.jsonl
+    reference: processed/reference_tables.jsonl
+  reports:
+    prepare: reports/prepare_dataset_report.json
+    dedupe: reports/dedupe_report.json
+    quality: reports/quality_filter_report.json
+    format: reports/format_sft_report.json
+    split: reports/split_report.json
+    validation: reports/validate_splits_report.json
+    checksums: reports/checksums.json
+    eval: reports/evaluation_report.json
+
+splits:
+  # Deterministic hash-based assignment, stratified by source dataset so every
+  # split contains every source that is eligible for training.
+  train: 0.90
+  validation: 0.05
+  test: 0.05
+  key_fields: [source_dataset, normalized_key]   # hashed together, never the row index
+
+dedupe:
+  # Stage 1: exact match on the canonical (prompt, answer) key.
+  exact: true
+  # Stage 2: near-duplicate detection over normalized prompt+answer text.
+  near: true
+  simhash_bits: 64
+  shingle_width: 5
+  near_duplicate_hamming_distance: 3   # <=3 differing bits of 64 => duplicate
+  keep: first_in_source_order
+  # Guard so the O(n * buckets) near-dup pass cannot blow up memory on this
+  # 16 GB machine: only rows sharing a band bucket are compared.
+  band_hashes: 4
+
+quality:
+  min_prompt_chars: 10
+  min_answer_chars: 20
+  max_prompt_chars: 12000
+  max_answer_chars: 20000
+  min_words_answer: 3
+  max_repeated_token_ratio: 0.55      # catches degenerate "the the the ..." rows
+  max_symbol_ratio: 0.60              # catches base64/binary blobs
+  min_ascii_or_cjk_ratio: 0.70        # catches mojibake-garbage rows
+  drop_empty_assistant: true
+  drop_refusal_answers: true
+  drop_prompt_echoing_answer: true
+  mask_secrets: true                  # redact, never drop, potential credentials
+  refusal_markers:            # matched case-insensitively as substrings
+    - "as an ai language model"
+    - "i cannot assist with that request"
+    - "i'm sorry, but i can't help with that"
+    - "i am unable to provide"
+    - "i cannot provide a response"
+
+format:
+  style: chatml_messages     # {"messages":[{role,content},...]} - native Gemma 4 system role
+  include_system_prompt: true
+  system_prompt: >-
+    You are LearnXSK's cybersecurity and Linux terminal tutor. Answer with
+    accurate, defensive, lab-safe guidance. Cite the standard or framework you
+    rely on when it applies. Never provide instructions intended to harm
+    systems you are not authorised to test.
+  max_records_per_source: 20000   # cap the 53k Trendyol rows for a first run
+  # Token budget is enforced later by train_lora.yaml max_seq_len; rows longer
+  # than this many characters are truncated at a paragraph boundary and flagged.
+  truncate_answer_chars: 8000
+
+evaluation:
+  # Built from the held-out test split plus the eval_only datasets.
+  sources:
+    - CyberMetric               # 10,000 MCQs, letter accuracy
+    - SecBench                  # 2,730 MCQs, letter accuracy (zh + en)
+    - cti-bench                 # prompt/answer pairs, exact-match + token F1
+    - CyberSec-Bench            # open answers on the test split, token F1
+  mcq_max_questions: 200        # per benchmark, so a run finishes on this laptop
+  open_max_questions: 50
+  max_new_tokens: 128
+  batch_size: 1
+  temperature: 0.0
+  apply_chat_template: true
+  metrics: [accuracy, exact_match, token_f1]
+  baseline_required: true       # a tuned score is only meaningful next to base

@@ -1,0 +1,314 @@
+# LearnXSK dataset manifest
+# ---------------------------------------------------------------------------
+# Single source of truth for how each read-only source dataset is interpreted.
+# Consumed by apps/ml/scripts/audit_datasets.py, prepare_dataset.py and by the
+# quality gate. License and `usage` decisions below are deliberate, not
+# defaults: see docs/DATASET_AUDIT.md for the reasoning.
+#
+# usage values:
+#   sft_train      -> eligible for supervised fine-tuning rows
+#   eval_only      -> kept out of training, used only for held-out evaluation
+#   reference_only -> structured knowledge, not question/answer pairs
+#   exclude        -> not used by this pipeline at all
+# ---------------------------------------------------------------------------
+
+manifest_version: 1
+generated_by: apps/ml/scripts/audit_datasets.py
+datasets_root: "C:\\Users\\anmol\\OneDrive\\Desktop\\hackathon\\datasets"
+
+# Filled in at run time by prepare_dataset.py; declared here for documentation.
+record_counter_defaults:
+  dedupe_scope: per_dataset_then_global
+
+datasets:
+  - id: Trendyol-Cybersecurity-Instruction-Tuning-Dataset
+    display_name: Trendyol Cybersecurity Instruction Tuning Dataset
+    source_path: Trendyol-Cybersecurity-Instruction-Tuning-Dataset/CyberSec-Dataset_escaped.jsonl
+    upstream: https://huggingface.co/datasets/Trendyol/Trendyol-Cybersecurity-Instruction-Tuning-Dataset
+    license: apache-2.0
+    license_commercial_ok: true
+    license_note: >-
+      Declared Apache-2.0 in the dataset card licence badge and the comparison
+      table. Permissive; redistribution of derived rows is allowed with the
+      upstream NOTICE and attribution preserved.
+    usage: sft_train
+    task_type: instruction_following
+    language: en
+    approx_rows: 53201
+    size_bytes: 195035136
+    adapter: trendyol_chat
+    field_map:
+      system: system
+      user: user
+      assistant: assistant
+    quality_gates:
+      min_prompt_chars: 12
+      min_answer_chars: 40
+      allow_refusal_answers: false
+    notes: >-
+      Primary SFT source (largest, chat-formatted, defensive-security focused).
+      Contains Markdown-heavy answers and occasional mojibake smart punctuation
+      (bytes were UTF-8 read as cp1252 upstream); normalization is applied but
+      the damaged sequences are NOT guessed at.
+
+  - id: CyberSec-Bench
+    display_name: CyberSec-Bench
+    source_path: CyberSec-Bench/cybersec_bench.jsonl
+    upstream: https://huggingface.co/datasets/AYI-NEDJIMI/CyberSec-Bench
+    license: apache-2.0
+    license_commercial_ok: true
+    license_note: >-
+      Dataset card front matter and the "## License" section both state Apache
+      2.0. Permissive.
+    usage: sft_train
+    task_type: open_question_answering
+    language: [en, fr]
+    approx_rows: 200
+    size_bytes: 532992
+    adapter: qa_question_reference_answer
+    field_map:
+      prompt: question
+      answer: reference_answer
+      metadata: [id, category, subcategory, difficulty, language, source]
+    quality_gates:
+      min_prompt_chars: 20
+      min_answer_chars: 80
+      allow_refusal_answers: false
+    notes: >-
+      Small but high-quality bilingual (en/fr) compliance and defence Q&A set.
+      Used for both training and held-out evaluation so every split covers more
+      than one source.
+
+  - id: SecBench
+    display_name: SecBench
+    source_path: SecBench
+    upstream: https://huggingface.co/datasets/secbench-hf/SecBench
+    license: mit
+    license_commercial_ok: true
+    license_note: >-
+      Front matter declares MIT. Note the upstream paper reports 44,823 MCQs /
+      3,087 SAQs; the snapshot in this repository contains only the 2,730 MCQ and
+      270 SAQ evaluation files, so the local snapshot is a small subset.
+    usage: sft_train
+    task_type: mixed_mcq_and_short_answer
+    language: [en, zh]
+    approx_rows: 3000
+    size_bytes: 2936832
+    adapters:
+      - source_path: SecBench/data/SAQs_270.jsonl
+        adapter: qa_short_answer
+        usage: sft_train
+        field_map:
+          prompt: question
+          answer: answer
+          metadata: [ability, domain, language]
+      - source_path: SecBench/data/MCQs_2730.jsonl
+        adapter: mcq_options_answer
+        usage: eval_only
+        field_map:
+          prompt: question
+          options: answers
+          answer_label: label
+          metadata: [ability, domain, language]
+    quality_gates:
+      min_prompt_chars: 15
+      min_answer_chars: 20
+      allow_refusal_answers: false
+    notes: >-
+      Chinese and English content. The MCQ file is held out of training so the
+      same benchmark can be used to measure the fine-tune without teaching to
+      the test; local multiple-choice accuracy on it is the headline metric.
+
+  - id: KALI_LINUX_TOOLKIT_DATASET
+    display_name: Kali Linux Toolkit Dataset
+    source_path: KALI_LINUX_TOOLKIT_DATASET/KALI_LINUX_TOOLS_DATASET.jsonl
+    upstream: https://huggingface.co/datasets/barisKacin/KALI_LINUX_TOOLKIT_DATASET
+    license: mit
+    license_commercial_ok: true
+    license_note: "Dataset card declares MIT; README repeats 'released under the MIT License'."
+    usage: sft_train
+    task_type: tool_usage_synthesis
+    language: en
+    approx_rows: 790
+    size_bytes: 230400
+    adapter: kali_tool_card
+    field_map:
+      command: command
+      tool: tool
+      description: description
+      metadata: [category, use_case, flags, os, reference_link]
+    quality_gates:
+      min_prompt_chars: 10
+      min_answer_chars: 30
+      allow_refusal_answers: false
+    notes: >-
+      No prompt/answer pairs upstream: prompts are synthesized deterministically
+      from the command and tool names, and the target answer is assembled from
+      description + use case + flags. Offensive-security tooling, but framed as
+      documentation for authorised lab use only.
+
+  - id: Linux_Terminal_Commands_Dataset
+    display_name: Linux Terminal Commands Dataset
+    source_path: Linux_Terminal_Commands_Dataset/LINUX_TERMINAL_COMMANDS.jsonl
+    upstream: https://huggingface.co/datasets/darkknight25/Linux_Terminal_Commands_Dataset
+    license: mit
+    license_commercial_ok: true
+    license_note: "Dataset card declares MIT."
+    usage: sft_train
+    task_type: tool_usage_synthesis
+    language: en
+    approx_rows: 599
+    size_bytes: 178176
+    adapter: linux_command_card
+    field_map:
+      command: command
+      description: description
+      metadata: [id, category, example_output, man_reference]
+    quality_gates:
+      min_prompt_chars: 10
+      min_answer_chars: 25
+      allow_refusal_answers: false
+    notes: >-
+      One record (cmd-455) is not valid JSON: it contains a bare `\\.` escape
+      inside a string. The row is repaired by re-escaping backslashes, and the
+      repair is counted and reported rather than hidden.
+
+  - id: CyberMetric
+    display_name: CyberMetric
+    source_path: CyberMetric
+    upstream: https://huggingface.co/datasets/tihanyin/CyberMetric
+    license: apache-2.0
+    license_commercial_ok: true
+    license_note: "Dataset card declares Apache-2.0."
+    usage: eval_only
+    task_type: multiple_choice_benchmark
+    language: en
+    approx_rows: 12760
+    size_bytes: 5739008
+    adapters:
+      - source_path: CyberMetric/CyberMetric-10000-v1.json
+        adapter: mcq_options_solution
+        usage: eval_only
+        canonical: true
+      - source_path: CyberMetric/CyberMetric-2000-v1.json
+        adapter: mcq_options_solution
+        usage: exclude
+        reason: nested_subset_of_10000
+      - source_path: CyberMetric/CyberMetric-500-v1.json
+        adapter: mcq_options_solution
+        usage: exclude
+        reason: nested_subset_of_10000
+      - source_path: CyberMetric/CyberMetric-80-v1.json
+        adapter: mcq_options_solution
+        usage: exclude
+        reason: nested_subset_of_10000
+    quality_gates:
+      min_prompt_chars: 15
+      min_answer_chars: 1
+      allow_refusal_answers: true
+    notes: >-
+      The four files are nested subsets of one another (10000 > 2000 > 500 >
+      80). Only the 10,000-question file is ingested, otherwise the same
+      questions enter evaluation several times and inflate any accuracy number.
+      Held out of training to keep the benchmark honest.
+
+  - id: cti-bench
+    display_name: CTIBench
+    source_path: cti-bench
+    upstream: https://huggingface.co/datasets/AI4Sec/cti-bench
+    license: cc-by-nc-sa-4.0
+    license_commercial_ok: false
+    license_note: >-
+      Dataset card declares CC-BY-NC-SA-4.0: NonCommercial and ShareAlike.
+      Training on it would taint the resulting weights for commercial use and
+      ShareAlike would attach to derivative distributions.
+    usage: eval_only
+    task_type: cti_benchmark_suite
+    language: en
+    approx_rows: 5610
+    size_bytes: 7622656
+    adapters:
+      - source_path: cti-bench/cti-mcq.tsv
+        adapter: tsv_mcq
+        usage: eval_only
+        field_map: {prompt: Prompt, answer: GT, metadata: [URL, Question, Option A, Option B, Option C, Option D]}
+      - source_path: cti-bench/cti-rcm.tsv
+        adapter: tsv_prompt_answer
+        usage: eval_only
+        field_map: {prompt: Prompt, answer: GT, metadata: [URL, Description]}
+      - source_path: cti-bench/cti-rcm-2021.tsv
+        adapter: tsv_prompt_answer
+        usage: eval_only
+        field_map: {prompt: Prompt, answer: GT, metadata: [URL, Description]}
+      - source_path: cti-bench/cti-vsp.tsv
+        adapter: tsv_prompt_answer
+        usage: eval_only
+        field_map: {prompt: Prompt, answer: GT, metadata: [URL, Description]}
+      - source_path: cti-bench/cti-ate.tsv
+        adapter: tsv_prompt_answer
+        usage: eval_only
+        field_map: {prompt: Prompt, answer: GT, metadata: [URL, Platform, Description]}
+      - source_path: cti-bench/cti-taa.tsv
+        adapter: tsv_prompt_no_ground_truth
+        usage: eval_only
+        field_map: {prompt: Prompt, metadata: [URL, Text]}
+    quality_gates:
+      min_prompt_chars: 20
+      min_answer_chars: 1
+      allow_refusal_answers: true
+    notes: >-
+      EXCLUDED from training because of the NonCommercial/ShareAlike terms. Kept
+      for evaluation only, and any redistribution of evaluation outputs must
+      cite Alam & Bhusal (RIT) and keep the CC-BY-NC-SA-4.0 terms. cti-taa.tsv
+      ships no ground truth in the snapshot, so it is prompt-only and cannot
+      contribute to a scored metric.
+
+  - id: NIST-NICE-Framework
+    display_name: NIST NICE Framework (Workforce Framework for Cybersecurity)
+    source_path: NIST-NICE-Framework
+    upstream: https://www.nist.gov/itl/applied-cybersecurity/nice/nice-framework-resource-center/nice-framework-current-versions
+    license: us-government-public-domain
+    license_commercial_ok: true
+    license_note: >-
+      NIST SP 800-181r1 and the NICE Framework components are US Government
+      works, not subject to US copyright (17 U.S.C. 105); NIST terms of use
+      request attribution and prohibit implying NIST endorsement. The
+      repository's own README carries no license field, so this manifest records
+      the source-of-record status rather than a dataset-card claim.
+    usage: reference_only
+    task_type: taxonomy_reference
+    language: en
+    approx_rows: 2356
+    size_bytes: 4243456
+    adapters:
+      - source_path: NIST-NICE-Framework/v2-2-0_nf_components.json
+        adapter: nice_components_json
+        usage: reference_only
+      - source_path: NIST-NICE-Framework/NICE Framework Components v2.2.0.xlsx
+        adapter: xlsx_reference
+        usage: reference_only
+      - source_path: NIST-NICE-Framework/NIST.SP.800-181r1.pdf
+        adapter: pdf_reference
+        usage: reference_only
+        field_map: {}
+      - source_path: NIST-NICE-Framework/NICE Framework to CSF Mapping - v2.0.0 to v2 - September 2025.xlsx
+        adapter: xlsx_reference
+        usage: reference_only
+      - source_path: NIST-NICE-Framework/C3 Credentials Mapping to NICE Work Roles - v2.0.0 - March 2025.xlsx
+        adapter: xlsx_reference
+        usage: reference_only
+    quality_gates:
+      min_prompt_chars: 1
+      min_answer_chars: 1
+      allow_refusal_answers: true
+    notes: >-
+      Not question/answer data. The 2,356 components include many empty `text`
+      fields (for example element S-OG), so it is exported as a normalized
+      reference table for grounding and curriculum tagging, never as SFT rows.
+      The `relationships` array (5,950 edges) links statements to work roles.
+
+# Datasets that must never be trained on, enforced by prepare_dataset.py.
+excluded_from_training:
+  - cti-bench
+  - CyberMetric
+  - NIST-NICE-Framework

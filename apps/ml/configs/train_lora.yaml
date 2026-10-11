@@ -1,0 +1,96 @@
+# LoRA / QLoRA smoke fine-tune configuration for google/gemma-4-E2B-it.
+#
+# Scope warning: this is a SMOKE configuration. It proves the pipeline can train
+# an adapter end to end on this machine; it is not a recipe for a production
+# model. See docs/GEMMA4_TRAINING_GUIDE.md for what a real run would need.
+
+model:
+  # Verified against transformers >= 5.x, which ships Gemma4 (added 2026-04-02).
+  # The Ollama tag gemma4:e2b corresponds to this Hugging Face checkpoint.
+  id: google/gemma-4-E2B-it
+  fallback_ids:
+    - google/gemma-4-E4B-it      # ~2x size, still plausible on a 16 GB machine
+  revision: main
+  trust_remote_code: false
+  # Gemma checkpoints are gated on Hugging Face: the run needs HF_TOKEN and an
+  # accepted licence. preflight.py reports this before anything is downloaded.
+  requires_auth: true
+  # Gemma 4 E2B is multimodal (text + image, audio on E2B/E4B). This pipeline is
+  # text-only, so it loads the text path and never feeds image/audio inputs.
+  modality: text_only
+  dtype: bfloat16
+  device_map: auto
+  attn_implementation: sdpa
+  # 4-bit quantisation is the thing that decides whether QLoRA fits on a
+  # 4-8 GB laptop GPU. It needs bitsandbytes, which has no official cp314
+  # Windows wheel, so the loader treats it as optional and falls back.
+  load_in_4bit: true
+  bnb_4bit_quant_type: nf4
+  bnb_4bit_compute_dtype: bfloat16
+  bnb_4bit_use_double_quant: true
+
+lora:
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  bias: none
+  task_type: CAUSAL_LM
+  # Text-decoder projections only. train_lora.py verifies every name actually
+  # exists on the loaded model and aborts with the real module list if not,
+  # instead of silently training nothing.
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+  modules_to_save: []
+
+training:
+  max_seq_len: 1024            # keeps activation memory sane on 16 GB RAM
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 8
+  num_train_epochs: 1
+  max_steps: 20                # smoke run: 20 optimiser steps and stop
+  learning_rate: 0.0002
+  lr_scheduler_type: cosine
+  warmup_ratio: 0.03
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  bf16: true
+  fp16: false
+  gradient_checkpointing: true
+  gradient_checkpointing_kwargs:
+    use_reentrant: false
+  logging_steps: 1
+  save_strategy: steps
+  save_steps: 20
+  save_total_limit: 2
+  eval_strategy: "no"
+  dataloader_num_workers: 0    # Windows + spawn: 0 avoids duplicate-process memory
+  optim: adamw_torch
+  report_to: none
+  seed: 20260402
+  packing: false               # packing hides per-row length problems in a smoke run
+
+trl:
+  # trl >= 1.x renamed these; keep them explicit so the version is obvious.
+  dataset_text_field: null     # chat-format rows are rendered by the chat template
+  assistant_only_loss: true    # supervise the assistant turns, not the prompts
+  completion_only_loss: true
+  use_peft: true
+
+outputs:
+  # Resolved under the validated training root, never inside the repo.
+  run_dir: runs/smoke-gemma4-e2b-lora
+  adapter_dir: adapters/smoke-gemma4-e2b-lora
+  log_dir: runs/smoke-gemma4-e2b-lora/logs
+  export_dir: exports/gemma4-e2b-lora
+
+resource_limits:
+  # Used by preflight.py to refuse a run that cannot possibly fit.
+  min_free_ram_gb: 6.0
+  min_free_disk_gb: 12.0
+  max_train_seconds: 3600
