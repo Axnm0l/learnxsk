@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LearnXSK: The Blocklands — 2D Isometric Three.js Adventure</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="game-container"></div>
+
+  <div id="hud">
+    <div class="top-bar">
+      <div class="brand-badge">
+        <div class="brand-title">LEARNXSK: BLOCKLANDS</div>
+        <div class="brand-subtitle">3D-Isometric Procedural Grassland Adventure</div>
+      </div>
+
+      <div class="player-stats-card">
+        <div class="level-row">
+          <span class="level-title" id="hud-level-text">Level 1: Novice Explorer</span>
+          <span class="xp-count" id="hud-xp-text">0 / 100 XP</span>
+        </div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="hud-xp-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="objective-banner" id="hud-objective-banner">
+        <div class="objective-header">
+          <span class="objective-tag" id="hud-mission-id">MISSION 001</span>
+          <span class="objective-name" id="hud-mission-title">First Foothold</span>
+        </div>
+        <div class="objective-desc" id="hud-mission-desc">
+          Explore the grassy village, approach the Quest Board and press [E] to accept your first assignment!
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="controls-pill">
+        <div><span class="key-badge">W</span><span class="key-badge">A</span><span class="key-badge">S</span><span class="key-badge">D</span> Move</div>
+        <div><span class="key-badge">SHIFT</span> Run</div>
+        <div><span class="key-badge">E</span> Interact</div>
+      </div>
+      <div class="controls-pill">
+        <span id="world-pos-indicator">Blocklands Outpost [0, 0]</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING PROMPT -->
+  <div id="interact-prompt">
+    <span class="key-badge" style="font-size: 1rem; padding: 0.2rem 0.6rem;">E</span>
+    <span id="interact-text">Inspect Quest Board</span>
+  </div>
+
+  <!-- QUEST BOARD MODAL -->
+  <div class="modal-overlay" id="quest-modal">
+    <div class="quest-card">
+      <button class="modal-close-btn" id="quest-close-btn">&times;</button>
+      <h2 id="quest-modal-title">MISSION 001: THE LOST CONFIG</h2>
+      <div class="quest-body" id="quest-modal-body">
+        Welcome, Explorer! The outpost computer system rebooted and mislaid its core configuration files.
+        <br><br>
+        Navigate across the wooden bridge to the <strong>Terminal Outpost Station</strong>. Access the virtual Linux terminal and locate the secret verification token hidden inside the backup directory.
+      </div>
+      <div class="quest-reward">
+        <div><strong>Reward:</strong> +100 XP</div>
+        <div><strong>Unlocks:</strong> Mission 002 — Network Reconnaissance</div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 0.5rem;">
+        <button class="btn-action" id="quest-accept-btn">ACCEPT MISSION</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TERMINAL MODAL -->
+  <div class="modal-overlay" id="terminal-modal">
+    <div class="terminal-window">
+      <div class="terminal-titlebar">
+        <div class="terminal-dots">
+          <div class="terminal-dot dot-red" id="term-close-dot" style="cursor: pointer;"></div>
+          <div class="terminal-dot dot-yellow"></div>
+          <div class="terminal-dot dot-green"></div>
+        </div>
+        <div class="terminal-title">cadet@outpost-vfs: ~ (LearnXSK Linux Terminal Simulator)</div>
+        <button class="modal-close-btn" id="terminal-close-btn" style="position: static; width: 24px; height: 24px; font-size: 0.9rem;">&times;</button>
+      </div>
+
+      <div class="terminal-screen" id="terminal-screen">
+        <p class="term-info">========================================================</p>
+        <p class="term-info">  LEARNXSK VIRTUAL LINUX SYSTEM — TERMINAL SHELL v1.4   </p>
+        <p class="term-info">  Type 'help' for available commands, 'hint' for tutor </p>
+        <p class="term-info">========================================================</p>
+        <p class="term-stdout">System initialized. Logged in as user 'cadet'. Current dir: /home/cadet</p>
+      </div>
+
+      <div id="tutor-box">
+        <strong>Gemma AI Tutor:</strong> <span id="tutor-text">Analyzing your progress...</span>
+      </div>
+
+      <div class="terminal-input-bar">
+        <span class="prompt-label" id="terminal-prompt-label">cadet@outpost:~$</span>
+        <input type="text" class="terminal-input" id="terminal-input" autocomplete="off" spellcheck="false" placeholder="type command (ls, cd, cat, grep, hint, help)..." />
+      </div>
+
+      <div class="terminal-actions-bar">
+        <span>Simulated Filesystem &bull; Safe Sandbox</span>
+        <button class="btn-tutor" id="terminal-hint-btn">Ask Gemma Tutor</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

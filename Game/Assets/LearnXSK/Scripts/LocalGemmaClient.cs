@@ -15,7 +15,7 @@ namespace LearnXSK.AI
     {
         [Header("Local Service Configuration")]
         [SerializeField] private string ollamaEndpoint = "http://127.0.0.1:11434";
-        [SerializeField] private string modelName = "gemma2:2b";
+        [SerializeField] private string modelName = "gemma4:e2b";
         [SerializeField] private float requestTimeoutSeconds = 15f;
 
         public enum GemmaHealthStatus

@@ -23,6 +23,8 @@ ExportedObj/
 *.unityproj
 *.sln
 *.suo
+bin/
+obj/
 *.tmp
 *.user
 *.userprefs
@@ -33,9 +35,11 @@ ExportedObj/
 *.opendb
 *.VC.db
 
-# Unity profiler & crash logs
+# Unity profiler & crash logs & run logs
 sysinfo.txt
 *.stackdump
+*.log
+freebuff_audit_output.txt
 
 # OS-generated files
 .DS_Store

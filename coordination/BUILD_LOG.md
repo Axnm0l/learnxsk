@@ -64,3 +64,19 @@
 - **Compilation Check:**
   - `dotnet build tools\csharp-verification\VerificationTest.csproj` -> Build Succeeded (0 Warnings, 0 Errors).
 
+### Record 5: Unity 6 (6000.6.5f1) First Batchmode Launch & Package Resolution
+- **Target:** `C:\Users\anmol\OneDrive\Desktop\LearnXSK\Game`
+- **Editor Binary:** `C:\Program Files\Unity\Hub\Editor\6000.6.5f1\Editor\Unity.exe`
+- **Command:** `Unity.exe -batchmode -quit -projectPath "Game" -logFile "unity_init.log"`
+- **Result:** Exit code 1 (Recorded before modifying files).
+- **Logged Error:**
+  ```text
+  An error occurred while resolving packages:
+    Project has invalid dependencies:
+      com.unity.modules.core: Package [com.unity.modules.core@1.0.0] cannot be found
+      com.unity.modules.vr: Package [com.unity.modules.vr@1.0.0] cannot be found
+  [ExitDontLaunchBugReporter] Exiting without the bug reporter. Application will exit with return code 1
+  ```
+- **Analysis:** Unity 6 does not have `com.unity.modules.core` or `com.unity.modules.vr` packages. Removing these obsolete entries from `Packages/manifest.json` will allow Unity 6 to resolve packages and compile.
+
+

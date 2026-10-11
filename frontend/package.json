@@ -1,0 +1,19 @@
+{
+  "name": "learnxsk-frontend",
+  "version": "1.0.0",
+  "description": "LearnXSK: The Blocklands - Isometric 3D/2D Web Game Frontend",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.168.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.168.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.9"
+  }
+}
