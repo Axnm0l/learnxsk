@@ -19,6 +19,7 @@ plumbing verification, never as model quality.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import sys
@@ -70,9 +71,17 @@ def extract_letters(text: str) -> str:
     return "".join(sorted(set(letters)))
 
 
-def load_eval_rows(path: Path, mcq_cap: int, open_cap: int) -> list[dict[str, Any]]:
+def load_eval_rows(path: Path, mcq_cap: int, open_cap: int,
+                   limit: int | None = None) -> list[dict[str, Any]]:
+    """Load the evaluation set, capped per source and optionally balanced.
+
+    ``limit`` splits evenly between the two kinds so a short run exercises both
+    scoring paths instead of consuming its whole budget on the MCQ block that
+    happens to come first in the file.
+    """
     per_kind_source: Counter[str] = Counter()
-    rows: list[dict[str, Any]] = []
+    mcq: list[dict[str, Any]] = []
+    open_rows: list[dict[str, Any]] = []
     for _line, record, _raw in _common.iter_jsonl(path):
         if record is None:
             continue
@@ -82,8 +91,15 @@ def load_eval_rows(path: Path, mcq_cap: int, open_cap: int) -> list[dict[str, An
         if per_kind_source[key] >= cap:
             continue
         per_kind_source[key] += 1
-        rows.append(record)
-    return rows
+        (mcq if kind == "multiple_choice" else open_rows).append(record)
+    if limit is None or limit >= len(mcq) + len(open_rows):
+        return mcq + open_rows
+    half = max(1, limit // 2)
+    chosen_mcq = mcq[:half]
+    chosen_open = open_rows[:max(0, limit - len(chosen_mcq))]
+    if len(chosen_mcq) + len(chosen_open) < limit:
+        chosen_mcq = mcq[:limit - len(chosen_open)]
+    return chosen_mcq + chosen_open
 
 
 def build_model(config: dict[str, Any], adapter: str | None, random_init: bool):
@@ -137,9 +153,8 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(f"missing evaluation set: {eval_path}\nrun split_dataset.py first")
 
     rows = load_eval_rows(eval_path, int(eval_settings.get("mcq_max_questions", 200)),
-                          int(eval_settings.get("open_max_questions", 50)))
-    if args.limit:
-        rows = rows[:args.limit]
+                          int(eval_settings.get("open_max_questions", 50)),
+                          args.limit)
 
     # Evaluating the real checkpoint has the same memory requirement as training
     # it, so the same gate refuses a run that would only start a 9.5 GiB download
@@ -272,9 +287,87 @@ def main(argv: list[str] | None = None) -> int:
     })
     report_path = _common.artifact_path("reports/evaluation_report.json", args.out_root)
     _common.write_json_atomic(report_path, report)
+    labelled_path = _common.artifact_path(f"evaluation/{label}_report.json", args.out_root)
+    _common.write_json_atomic(labelled_path, report)
     _common.info(f"overall: {report['overall']}")
     _common.info(f"wrote {report_path}")
+    _common.info(f"wrote {labelled_path}")
+
+    write_comparison_if_ready(args.out_root)
     return 0
+
+
+def write_comparison_if_ready(out_root: str | None) -> None:
+    """Emit base-vs-tuned artifacts once both numbers exist.
+
+    A tuned score without the base score next to it says nothing, so the
+    comparison is produced automatically rather than by memory.
+    """
+    base_path = _common.artifact_path("evaluation/base_report.json", out_root)
+    tuned_path = _common.artifact_path("evaluation/tuned_report.json", out_root)
+    if not (base_path.is_file() and tuned_path.is_file()):
+        return
+    base = _common.read_json(base_path)
+    tuned = _common.read_json(tuned_path)
+
+    def metric(report: dict[str, Any], source: str, path: tuple[str, str]) -> Any:
+        entry = (report.get("metrics") or {}).get(source, {})
+        section = entry.get(path[0], {})
+        return section.get(path[1])
+
+    sources = sorted({*base.get("metrics", {}), *tuned.get("metrics", {})})
+    rows = []
+    for source in sources:
+        rows.append({
+            "source_dataset": source,
+            "base_mcq_accuracy": metric(base, source, ("mcq", "accuracy")),
+            "tuned_mcq_accuracy": metric(tuned, source, ("mcq", "accuracy")),
+            "base_open_token_f1": metric(base, source, ("open", "token_f1")),
+            "tuned_open_token_f1": metric(tuned, source, ("open", "token_f1")),
+        })
+
+    comparison = {
+        "base": {"label": base.get("label"), "overall": base.get("overall"),
+                 "model": base.get("model")},
+        "tuned": {"label": tuned.get("label"), "overall": tuned.get("overall"),
+                  "model": tuned.get("model")},
+        "per_source": rows,
+        "delta": {
+            "mcq_accuracy": _delta(tuned.get("overall", {}).get("mcq_accuracy"),
+                                   base.get("overall", {}).get("mcq_accuracy")),
+            "open_token_f1": _delta(tuned.get("overall", {}).get("open_token_f1"),
+                                    base.get("overall", {}).get("open_token_f1")),
+        },
+        "interpretation": tuned.get("interpretation"),
+    }
+    _common.write_json_atomic(
+        _common.artifact_path("reports/model_evaluation_comparison.json", out_root),
+        comparison)
+
+    lines = [
+        "# Base vs tuned evaluation",
+        "",
+        f"- Base run: `{base.get('label')}` - {json.dumps(base.get('overall'))}",
+        f"- Tuned run: `{tuned.get('label')}` - {json.dumps(tuned.get('overall'))}",
+        f"- Interpretation: {tuned.get('interpretation')}",
+        "",
+        "| Source | Base MCQ | Tuned MCQ | Base token F1 | Tuned token F1 |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for row in rows:
+        lines.append(
+            f"| `{row['source_dataset']}` | {row['base_mcq_accuracy']} | "
+            f"{row['tuned_mcq_accuracy']} | {row['base_open_token_f1']} | "
+            f"{row['tuned_open_token_f1']} |")
+    lines += ["", "```json", json.dumps(comparison["delta"], indent=2), "```", ""]
+    _common.artifact_path("evaluation/model_evaluation.md", out_root).write_text(
+        "\n".join(lines), encoding="utf-8")
+
+
+def _delta(tuned: Any, base: Any) -> Any:
+    if isinstance(tuned, (int, float)) and isinstance(base, (int, float)):
+        return round(tuned - base, 4)
+    return None
 
 
 if __name__ == "__main__":
