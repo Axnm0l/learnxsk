@@ -1,0 +1,23 @@
+{
+  "name": "learnxsk",
+  "version": "1.0.0",
+  "description": "LearnXSK — Cyber Blocklands 3D Learning Game powered by Gemma AI",
+  "main": "backend/dist/server.js",
+  "scripts": {
+    "start": ".\\LearnXSK.exe",
+    "build:exe": "node backend/secure_wallet/scripts/build_all_in_one_exe.js",
+    "build:frontend": "npm --prefix frontend run build",
+    "build:backend": "npm --prefix backend run build",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev"
+  },
+  "keywords": [
+    "cybersecurity",
+    "gemma",
+    "threejs",
+    "voxel",
+    "education"
+  ],
+  "author": "LearnXSK Team",
+  "license": "Apache-2.0"
+}

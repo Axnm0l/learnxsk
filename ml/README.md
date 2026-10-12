@@ -1,4 +1,4 @@
-# `apps/ml` - Gemma 4 fine-tuning pipeline
+# `ml` - Gemma 4 fine-tuning pipeline
 
 Everything needed to turn the read-only cybersecurity corpora into a LoRA adapter
 for `google/gemma-4-E2B-it`, plus the audits that justify the data choices.
@@ -32,7 +32,7 @@ Full narrative documentation lives in:
 ## Layout
 
 ```
-apps/ml/
+ml/
   configs/
     dataset_manifest.yaml    per-dataset licence, usage, adapter, field map, gates
     data_pipeline.yaml       seed, paths, split ratios, dedupe, quality, evaluation
@@ -64,23 +64,23 @@ apps/ml/
 ```bash
 PY=C:/Users/anmol/OneDrive/Desktop/hackathon/training/.venv/Scripts/python.exe
 
-python apps/ml/scripts/inventory_datasets.py
-python apps/ml/scripts/audit_datasets.py
-$PY apps/ml/scripts/preflight.py --strict
+python ml/scripts/inventory_datasets.py
+python ml/scripts/audit_datasets.py
+$PY ml/scripts/preflight.py --strict
 
-python apps/ml/scripts/prepare_dataset.py
-python apps/ml/scripts/dedupe.py
-python apps/ml/scripts/quality_filter.py
-python apps/ml/scripts/format_sft.py
-python apps/ml/scripts/split_dataset.py
-python apps/ml/scripts/validate_splits.py
+python ml/scripts/prepare_dataset.py
+python ml/scripts/dedupe.py
+python ml/scripts/quality_filter.py
+python ml/scripts/format_sft.py
+python ml/scripts/split_dataset.py
+python ml/scripts/validate_splits.py
 
-$PY apps/ml/scripts/train_lora.py
-$PY apps/ml/scripts/evaluate.py --label base
-$PY apps/ml/scripts/export_model.py
+$PY ml/scripts/train_lora.py
+$PY ml/scripts/evaluate.py --label base
+$PY ml/scripts/export_model.py
 
-python apps/ml/scripts/make_checksums.py --verify
-python -m unittest discover -s apps/ml/tests -p "test_*.py"
+python ml/scripts/make_checksums.py --verify
+python -m unittest discover -s ml/tests -p "test_*.py"
 ```
 
 The first six data stages need only the standard library plus PyYAML. Anything

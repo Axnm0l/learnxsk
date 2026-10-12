@@ -13,8 +13,8 @@
 # ---------------------------------------------------------------------------
 
 manifest_version: 1
-generated_by: apps/ml/scripts/audit_datasets.py
-datasets_root: "apps/ml/datasets"
+generated_by: ml/scripts/audit_datasets.py
+datasets_root: "ml/datasets"
 
 # Filled in at run time by prepare_dataset.py; declared here for documentation.
 record_counter_defaults:

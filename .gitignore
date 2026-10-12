@@ -83,26 +83,42 @@ venv/
 # C:\Users\anmol\OneDrive\Desktop\hackathon\training. The patterns below only
 # catch stray copies so generated data can never be committed by accident.
 # =========================================================================
-/apps/ml/**/outputs/
-/apps/ml/**/runs/
-/apps/ml/**/adapters/
-/apps/ml/**/exports/
-/apps/ml/**/*.jsonl.tmp
+/ml/**/outputs/
+/ml/**/runs/
+/ml/**/adapters/
+/ml/**/exports/
+/ml/**/*.jsonl.tmp
 /training/
 *.jsonl.tmp
 
 # =========================================================================
 # Datasets (large files — kept locally, not pushed to GitHub)
 # =========================================================================
-/apps/ml/datasets/**/*.jsonl
-/apps/ml/datasets/**/*.json
-/apps/ml/datasets/**/*.tsv
-/apps/ml/datasets/**/*.xlsx
-/apps/ml/datasets/**/*.pdf
-/apps/ml/datasets/**/*.csv
+/ml/datasets/**/*.jsonl
+/ml/datasets/**/*.json
+/ml/datasets/**/*.tsv
+/ml/datasets/**/*.xlsx
+/ml/datasets/**/*.pdf
+/ml/datasets/**/*.csv
 
 # Web build & dependencies
 node_modules/
 dist/
 .vite/
 *.local
+
+# =========================================================================
+# SECURE USER DATA VAULT & PRIVATE TELEMETRY (STRICT ISOLATION)
+# User questions, telemetry, learning profiles and fine-tuning datasets
+# =========================================================================
+/backend/secure_user_vault/
+secure_user_vault/
+*.vault
+*.vault.enc
+/backend/.env
+/backend/build_bundle/
+build_bundle/
+*.blob
+sea-prep.blob
+*.exe
+LearnXSK.exe

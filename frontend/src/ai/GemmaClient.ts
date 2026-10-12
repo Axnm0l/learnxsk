@@ -1,7 +1,7 @@
 /**
  * LearnXSK Gemma AI Client
- * Connects to local Ollama (Gemma 2 / Gemma 4) with robust on-device cyber intelligence fallback.
- * Provides personalized answers, diagnostics, and step-by-step coaching based on student profile.
+ * Connects to LearnXSK AI Backend (http://localhost:3001) with fallback to local Ollama and on-device cyber intelligence.
+ * Provides hyper-personalized answers, telemetry ingestion, and training corpus logging.
  */
 
 export interface StudentProfile {
@@ -14,15 +14,19 @@ export interface StudentProfile {
 
 export interface TutorResponse {
   answer: string;
-  source: 'ollama' | 'local-intelligence';
+  source: 'ollama' | 'local-intelligence' | 'backend-vault';
   confidence?: number;
   suggestedAction?: string;
+  accelerationFactor?: number;
 }
 
 export class GemmaClient {
   private static instance: GemmaClient;
+  private backendUrl: string = typeof window !== 'undefined' && window.location.port !== '5173'
+    ? `${window.location.origin}/api/ai`
+    : 'http://localhost:3001/api/ai';
   private ollamaUrl: string = 'http://localhost:11434/api/generate';
-  private modelName: string = 'gemma2:2b'; // or gemma4 when loaded
+  private modelName: string = 'gemma2:2b';
   private studentProfile: StudentProfile = {
     handle: 'Cadet_Cipher',
     trackId: 'linux_core',
@@ -40,6 +44,8 @@ export class GemmaClient {
 
   public setProfile(profile: StudentProfile): void {
     this.studentProfile = { ...profile };
+    // Asynchronously notify backend to initialize user in secure vault
+    this.syncProfileToBackend(profile).catch(() => {});
   }
 
   public getProfile(): StudentProfile {
@@ -47,10 +53,72 @@ export class GemmaClient {
   }
 
   /**
+   * Syncs profile to backend secure vault
+   */
+  private async syncProfileToBackend(profile: StudentProfile): Promise<void> {
+    try {
+      await fetch(`${this.backendUrl}/onboarding`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profile)
+      });
+    } catch {
+      // Backend offline, quiet fallback
+    }
+  }
+
+  /**
+   * Sends telemetry to backend secure vault
+   */
+  public async logTelemetry(eventType: string, details: Record<string, any>): Promise<void> {
+    try {
+      await fetch(`${this.backendUrl}/telemetry`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          handle: this.studentProfile.handle,
+          eventType,
+          details
+        })
+      });
+    } catch {
+      // Offline fallback
+    }
+  }
+
+  /**
    * Generates a personalized onboarding greeting and diagnostic question
    */
   public async generateOnboardingAnalysis(profile: StudentProfile): Promise<{ greeting: string; diagnosticQuestion: string; options: string[]; correctIdx: number }> {
     this.setProfile(profile);
+
+    // Try backend onboarding diagnostic first
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 1200);
+
+      const res = await fetch(`${this.backendUrl}/onboarding`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profile),
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.diagnostic) {
+          return {
+            greeting: data.diagnostic.greeting,
+            diagnosticQuestion: data.diagnostic.diagnosticQuestion,
+            options: data.diagnostic.options,
+            correctIdx: data.diagnostic.correctIdx
+          };
+        }
+      }
+    } catch {
+      // Backend offline: use built-in diagnostics
+    }
 
     const diagnosticsByTrack: Record<string, { question: string; options: string[]; correctIdx: number }> = {
       linux_core: {
@@ -95,13 +163,46 @@ export class GemmaClient {
    * Ask Gemma a personalized question or request hints for the active task
    */
   public async askTutor(query: string, activeMissionTitle: string, currentPath: string): Promise<TutorResponse> {
+    // 1. Try Backend API first (provides 100%-200% hyper-personalization + secure vault logging)
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 2000);
+
+      const res = await fetch(`${this.backendUrl}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profile: this.studentProfile,
+          query,
+          activeMissionTitle,
+          currentPath
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.answer) {
+          return {
+            answer: data.answer,
+            source: data.source === 'ollama' ? 'ollama' : 'backend-vault',
+            suggestedAction: data.suggestedAction,
+            accelerationFactor: data.accelerationFactor
+          };
+        }
+      }
+    } catch {
+      // Backend not running, proceed to direct Ollama fallback
+    }
+
+    // 2. Direct Ollama fallback if backend is offline
     const prompt = `Student: ${this.studentProfile.handle} (${this.studentProfile.level} in ${this.studentProfile.trackTitle}).
 Active Mission: ${activeMissionTitle}
 Current Working Directory: ${currentPath}
 Student Question: ${query}
 Please give a friendly, concise, educational answer (2-3 sentences max) tailored specifically to this student.`;
 
-    // Attempt local Ollama endpoint first
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 600);
@@ -131,6 +232,7 @@ Please give a friendly, concise, educational answer (2-3 sentences max) tailored
       // Ollama offline / training in background: seamlessly use intelligent fallback engine
     }
 
+    // 3. Built-in intelligent cyber intelligence fallback
     return this.getIntelligentFallback(query, activeMissionTitle, currentPath);
   }
 
