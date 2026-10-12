@@ -91,6 +91,16 @@ venv/
 /training/
 *.jsonl.tmp
 
+# =========================================================================
+# Datasets (large files — kept locally, not pushed to GitHub)
+# =========================================================================
+/apps/ml/datasets/**/*.jsonl
+/apps/ml/datasets/**/*.json
+/apps/ml/datasets/**/*.tsv
+/apps/ml/datasets/**/*.xlsx
+/apps/ml/datasets/**/*.pdf
+/apps/ml/datasets/**/*.csv
+
 # Web build & dependencies
 node_modules/
 dist/

@@ -47,6 +47,7 @@ LearnXSK/
 ├── apps/
 │   └── ml/                      # Gemma 4 fine-tuning pipeline
 │       ├── configs/             # Dataset manifest, training hyperparams
+│       ├── datasets/            # 8 cybersecurity datasets (see below)
 │       ├── scripts/             # 17 pipeline scripts (audit → train → export)
 │       ├── tests/               # 35 unit tests
 │       └── README.md            # Pipeline reference
